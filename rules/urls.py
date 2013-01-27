@@ -13,5 +13,6 @@ urlpatterns = patterns('',
     url(r'^admin/', include(admin.site.urls)),
     url(r'^user/(?P<user_id>\d+)$', UserView.as_view()),
     url(r'^rule-create-form/$', RuleCreateView.as_view()),
+    url(r'^score/(?P<score_string>.*)$', ScoreView.as_view()),
     # url(r'^nick-form/$', NickFormView.as_view()),
 )

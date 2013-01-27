@@ -12,7 +12,6 @@ class NickForm(forms.ModelForm):
 class RuleForm(forms.ModelForm):
   def __init__(self, *args, **kwargs):
     super(RuleForm, self).__init__(*args, **kwargs)
-    # self.fields['creator'] = forms.CharField(widget=forms.HiddenInput())
     self.fields['creator'].widget = forms.HiddenInput()
     self.fields['name'] = forms.CharField(widget=forms.TextInput(attrs=dict(placeholder='Rule Name')))
     self.fields['rule'] = forms.CharField(widget=forms.TextInput(attrs=dict(placeholder='Rule Regex')))

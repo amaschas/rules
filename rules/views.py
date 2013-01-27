@@ -29,5 +29,12 @@ class RuleCreateView(CreateView):
   form_class = RuleForm
   template_name = 'rule-form.html'
   def get_initial(self):
-    # super(RuleCreateView, self).get_initial()
-    return {"creator" : self.request.user}
+    initial = super(RuleCreateView, self).get_initial()
+    initial = initial.copy()
+    initial['creator'] = self.request.user
+    return initial
+
+class ScoreView(View):
+
+  def post(self, request, args, kwargs):
+    print kwargs['score_string']
