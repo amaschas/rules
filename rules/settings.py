@@ -100,7 +100,7 @@ TEMPLATE_LOADERS = (
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     # Uncomment the next line for simple clickjacking protection:
@@ -126,13 +126,31 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework'
+    'rest_framework',
+    'celery',
+    'kombu.transport.django',
     'rules',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
 )
+
+# Settings for Celery
+
+from datetime import timedelta
+
+BROKER_URL = 'django://'
+
+CELERYBEAT_SCHEDULE = {
+    'score-lines': {
+        'task': 'tasks.score_channel',
+        'schedule': timedelta(seconds=5),
+        'args': ('avara')
+    },
+}
+
+CELERY_TIMEZONE = 'EST'
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to

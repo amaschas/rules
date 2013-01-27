@@ -2,9 +2,15 @@ from django.template import RequestContext
 from django.shortcuts import render_to_response, get_object_or_404
 from django.contrib.auth.models import User
 from django.views.generic.base import TemplateView, View
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+from rest_framework.decorators import api_view
 
 from models import *
 from forms import *
@@ -34,7 +40,9 @@ class RuleCreateView(CreateView):
     initial['creator'] = self.request.user
     return initial
 
-class ScoreView(View):
+class ScoreView(APIView):
 
-  def post(self, request, args, kwargs):
-    print kwargs['score_string']
+  # @csrf_exempt
+  def post(self, request):
+    print request.DATA
+    return HttpResponse(status=201)
