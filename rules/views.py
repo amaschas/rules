@@ -39,10 +39,3 @@ class RuleCreateView(CreateView):
     initial = initial.copy()
     initial['creator'] = self.request.user
     return initial
-
-class ScoreView(APIView):
-
-  # @csrf_exempt
-  def post(self, request):
-    print request.DATA
-    return HttpResponse(status=201)
