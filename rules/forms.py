@@ -9,6 +9,10 @@ class NickForm(forms.ModelForm):
     model = Nick
     # exclude = ('source','description')
 
+class ChannelForm(forms.ModelForm):
+  class Meta:
+    model = Channel
+
 class RuleForm(forms.ModelForm):
   def __init__(self, *args, **kwargs):
     super(RuleForm, self).__init__(*args, **kwargs)

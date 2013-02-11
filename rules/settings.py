@@ -126,7 +126,7 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'celery',
+    'djcelery',
     'kombu.transport.django',
     'rules',
     # Uncomment the next line to enable the admin:
@@ -137,15 +137,18 @@ INSTALLED_APPS = (
 
 # Settings for Celery
 
+import djcelery
+djcelery.setup_loader()
+
 from datetime import timedelta
 
 BROKER_URL = 'django://'
 
 CELERYBEAT_SCHEDULE = {
     'score-lines': {
-        'task': 'tasks.score_channel',
+        'task': 'rules.score_channel',
         'schedule': timedelta(seconds=5),
-        'args': ('avara')
+        'args': ('avara',)
     },
 }
 

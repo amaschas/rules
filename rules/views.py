@@ -39,3 +39,13 @@ class RuleCreateView(CreateView):
     initial = initial.copy()
     initial['creator'] = self.request.user
     return initial
+
+class ChannelCreateView(CreateView):
+  model = Channel
+  form_class = ChannelForm
+  template_name = 'channel-form.html'
+  # def get_initial(self):
+  #   initial = super(RuleCreateView, self).get_initial()
+  #   initial = initial.copy()
+  #   initial['creator'] = self.request.user
+  #   return initial
