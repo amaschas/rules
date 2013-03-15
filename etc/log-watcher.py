@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, sys, time, redis
+import os, sys, time, re, json, redis
 from collections import deque
 from httplib2 import Http
 from watchdog.observers import Observer
@@ -13,13 +13,14 @@ from watchdog.events import FileSystemEventHandler
 
 class LogUpdateHandler(FileSystemEventHandler): 
   def __init__(self):
+
     # Grab a list of files in the target directory, sort and stick in a deque for optimized access (lists are slow)
     self.dir = deque()
-    for f in sorted(filter(lambda x: x.find(sys.argv[2]) > -1, os.listdir(sys.argv[1]))):
-      self.dir.append(f)
+    for f in sorted(filter(lambda x: sys.argv[2] in x, os.listdir(sys.argv[1]))):
+      self.dir.append('%s%s' % (sys.argv[1], f))
 
     # Open the first file in the queue
-    self.file = open('%s%s' % (sys.argv[1], self.dir.popleft()), 'r')
+    self.file = open(self.dir.popleft(), 'r')
 
     # Init ourself some redis
     self.r = redis.Redis(host='localhost', port=6379, db=0)
@@ -32,14 +33,19 @@ class LogUpdateHandler(FileSystemEventHandler):
     self.ReadLog()
     FileSystemEventHandler.__init__(self)
 
-  def on_any_event(self, event): 
-    # Feed from the logs when anything happens
-    # TODO: When a file is added, it should be appended to the queue before logs are read
-    self.ReadLog()
-    # print event
-    # TODO: Hit the API call on the Django app
+  # If a new file is created, append to list of files in target directory
+  def on_created(self, event):
+    if sys.argv[2] in os.path.basename(event.src_path):
+      self.dir.append(event.src_path)
+
+  # If anything is modified, trigger ReadLog()
+  def on_modified(self, event):
+    if sys.argv[2] in os.path.basename(event.src_path):
+      self.ReadLog()
+
+  #TODO: method that triggers the dango app api
     # h = Http()
-    # resp, content = h.request("http://127.0.0.1:8000/update/", "POST", json.dumps({'message' : 'updated'}), headers={'content-type':'application/json'})
+    # resp, content = h.request("http://127.0.0.1:8000/update/", "POST", json.dumps({'update' : 'avara'}), headers={'content-type':'application/json'})
 
   def ReadLog(self):
     # Set byte position in file
@@ -53,7 +59,7 @@ class LogUpdateHandler(FileSystemEventHandler):
 
     # Once we're done with the file, check if there is another, and run ReadLog() on it if it exists
     try:
-      self.file = open('%s%s' % (sys.argv[1], self.dir.popleft()), 'r')
+      self.file = open(self.dir.popleft(), 'r')
       self.where = 0
       self.ReadLog()
 
