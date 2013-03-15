@@ -1,4 +1,5 @@
 from celery import Celery
+import glob
 import re
 
 celery = Celery('rules', broker='django://')
@@ -8,6 +9,15 @@ celery = Celery('rules', broker='django://')
 # need this
 # @celery.task
 # def nick_scan
+
+@celery.task
+def log_watcher():
+  # channels = Channel.objects.get()
+  # for channel in channels:
+  logs = glob.glob('/Users/alexi/Documents/log.avara/*')
+  print 'test'
+  print logs.__len__()
+
 
 @celery.task
 def score_channel(channel_slug, rule_id=None):
@@ -36,18 +46,12 @@ def score_log(rules, log_path, start_position):
   log = open(log_path, 'r')
   log.seek(start_position)
   for line in log.xreadlines():
+    print 'checking line'
+    rules.score(line)
     #check rule length?
-    # print test
-    print line
     # for rule in rules:
-    #   if rule.status == 'active':
-    #     if re.search(rule.regex, line):
-          # user = get_user_from_nick(line)
-          # need to make score a method on the rule instance
-          # score contains the get user from nick method as well
-          # more like rule.score(line)
-          # score(rule.id, user)
-          # print line
+      # if rule.status == 'active':
+          # rule.score(line)
    #This should check to see if the log.readline matches the current last line for the channel
   # if start_position == 0:
   #   rule[0].status = 'active'
