@@ -8,7 +8,6 @@ from watchdog.events import FileSystemEventHandler
 
 class LogUpdateHandler(FileSystemEventHandler): 
   def __init__(self):
-    # This needs to read each file in sequence
     self.dir = deque()
     for f in sorted(filter(lambda x: x.find('avara') > -1, os.listdir(sys.argv[1]))):
       self.dir.append(f)
@@ -54,8 +53,3 @@ if __name__ == "__main__":
   except KeyboardInterrupt:
     observer.stop()
   observer.join()
-  # except:
-  #   try:
-  #     print 'Log not found at: %s' % sys.argv[1]
-  #   except IndexError:
-  #     print 'Usage: log-watcher.py <path-to-log-file>'
