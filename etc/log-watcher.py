@@ -6,11 +6,15 @@ from httplib2 import Http
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler 
 
+# argv[1]: target directory
+# argv[2]: file filter string
+
 class LogUpdateHandler(FileSystemEventHandler): 
   def __init__(self):
     self.dir = deque()
-    for f in sorted(filter(lambda x: x.find('avara') > -1, os.listdir(sys.argv[1]))):
+    for f in sorted(filter(lambda x: x.find(sys.argv[2]) > -1, os.listdir(sys.argv[1]))):
       self.dir.append(f)
+    print self.dir
     self.file = open('%s%s' % (sys.argv[1], self.GetLog()), 'r')
     self.r = redis.Redis(host='localhost', port=6379, db=0)
     self.redis_index = 0
@@ -31,7 +35,7 @@ class LogUpdateHandler(FileSystemEventHandler):
   def ReadLog(self):
     self.file.seek(self.where)
     for line in self.file:
-      print '%s - %s' % (self.redis_index, line.strip())
+      # print '%s - %s' % (self.redis_index, line.strip())
       self.r.set(self.redis_index, line.strip())
       self.redis_index += 1
     try:
