@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.dispatch import receiver
+from signals import update_rules
+from django.db.models.signals import post_init
 
 class Rule(models.Model):
   RULE_STATUSES = (
@@ -14,28 +17,27 @@ class Rule(models.Model):
   def __unicode__(self):
       return self.name
 
-  def score(self, line):
-    print line
+  def score(self, **kwargs):
+    return 'worked'
 
-  # def get_user_from_nick(line):
+# TODO add a listener to the post_save signal that scores the entire channel against the rule
+# needs to make sure that it accounts for modifications: delete all previous scores associated with rule and re-score
+
 
 class Channel(models.Model):
   title = models.CharField(max_length=100)
   slug = models.CharField(max_length=20)
-  start_date = models.DateTimeField()
-  # total_lines_scored = models.BigIntegerField(default=0)
-  log_path = models.FilePathField(path="/Users/alexi/Desktop", max_length=200)
-  #might need these
-  current_log_file = models.CharField(max_length=100)
-  current_log_position = models.BigIntegerField(default=0)
-  current_log_count = models.BigIntegerField(default=0)
+  latest_line = models.BigIntegerField(default=0)
+  def __unicode__(self):
+      return self.title
 
 
-# Each line score is a single entry, which will allow us to graph
 class Score(models.Model):
   nick = models.ForeignKey(User)
   rule = models.ForeignKey(Rule)
   date = models.DateTimeField()
+  line_id = models.BigIntegerField(default=0)
+
 
 class Nick(models.Model):
   user = models.ForeignKey(User)

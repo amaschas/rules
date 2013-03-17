@@ -7,7 +7,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler 
 
 # argv[1]: target directory
-# argv[2]: file filter string
+# argv[2]: channel name (used as file filter string)
+# TODO: user and pw args
 # Feeds directory of log files into redis, and notifies the Django app when shit changes
 # invoke like this: python logwatch.py /path/to/logs/ <filter string for logs>
 
@@ -44,6 +45,20 @@ class LogUpdateHandler(FileSystemEventHandler):
       self.ReadLog()
 
   #TODO: method that triggers the dango app api
+  # probably going to need:
+  # h = Http(disable_ssl_certificate_validation=True) when using https for production
+  #not sure if we need:
+  # h.add_certificate('serverkey.pem', 'servercert.pem', '')
+
+  # EXAMPLE:
+  # import httplib2
+  # h = httplib2.Http(".cache")
+  # h.add_credentials('name', 'password')
+  # resp, content = h.request("https://example.org/chap/2", 
+  #     "PUT", body="This is text", 
+  #     headers={'content-type':'text/plain'} )
+
+  # Need to watch out for "HTTPS support is only available if the socket module was compiled with SSL support."
     # h = Http()
     # resp, content = h.request("http://127.0.0.1:8000/update/", "POST", json.dumps({'update' : 'avara'}), headers={'content-type':'application/json'})
 
@@ -51,10 +66,10 @@ class LogUpdateHandler(FileSystemEventHandler):
     # Set byte position in file
     self.file.seek(self.where)
 
-    # For each line in the file, insert into redis, keyed by the line number
+    # For each line in the file, insert into redis, keyed by the channel name and line number
     for line in self.file:
-      # print '%s - %s' % (self.redis_index, line.strip())
-      self.r.set(self.redis_index, line.strip())
+      # print '%s-%s: %s' % (sys.argv[2], self.redis_index, line.strip())
+      self.r.set('%s-%s' % (sys.argv[2], self.redis_index), line.strip())
       self.redis_index += 1
 
     # Once we're done with the file, check if there is another, and run ReadLog() on it if it exists

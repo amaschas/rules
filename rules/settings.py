@@ -128,6 +128,8 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'djcelery',
     'kombu.transport.django',
+    'rest_framework',
+    'south',
     'rules',
     # Uncomment the next line to enable the admin:
     'django.contrib.admin',
@@ -140,19 +142,19 @@ INSTALLED_APPS = (
 import djcelery
 djcelery.setup_loader()
 
-from datetime import timedelta
+# from datetime import timedelta
 
-BROKER_URL = 'django://'
+# BROKER_URL = 'django://'
 
-CELERYBEAT_SCHEDULE = {
-    'score-lines': {
-        'task': 'rules.score_channel',
-        'schedule': timedelta(seconds=5),
-        'args': ('avara',)
-    },
-}
+# CELERYBEAT_SCHEDULE = {
+#     'score-lines': {
+#         'task': 'rules.score_channel',
+#         'schedule': timedelta(seconds=5),
+#         'args': ('avara',)
+#     },
+# }
 
-CELERY_TIMEZONE = 'EST'
+# CELERY_TIMEZONE = 'EST'
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to

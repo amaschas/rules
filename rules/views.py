@@ -14,6 +14,7 @@ from rest_framework.decorators import api_view
 
 from models import *
 from forms import *
+from tasks import *
 
 class RulesView(TemplateView):
   def BuildContext(self, request, args, kwargs):
@@ -49,3 +50,14 @@ class ChannelCreateView(CreateView):
   #   initial = initial.copy()
   #   initial['creator'] = self.request.user
   #   return initial
+
+class ScoreView(APIView):
+
+  def post(self, request):
+    rules = Rule.objects.all()
+    print request.DATA
+    # for rule in rules:
+    #   update_rules.connect(rule.score)
+    # update_rules.send(self, channel=request.DATA['channel'])
+    score_rules.delay(request.DATA['channel'])
+    return HttpResponse(status=201)
