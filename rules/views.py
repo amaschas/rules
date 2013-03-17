@@ -54,10 +54,13 @@ class ChannelCreateView(CreateView):
 class ScoreView(APIView):
 
   def post(self, request):
-    rules = Rule.objects.all()
-    print request.DATA
-    # for rule in rules:
-    #   update_rules.connect(rule.score)
-    # update_rules.send(self, channel=request.DATA['channel'])
+    channel = Channel.objects.get(slug=request.DATA['channel'])
+    channel_rules_meta = ChannelRuleMeta.objects.get(channel=channel)
+    self.r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
+    for channel_rule_meta in channel_rules_meta:
+      next_line = channel_rule_meta.current_line + 1
+      if r.get('%s-%s' % (channel.slug, next_line)):
+        channel_rule_meta.current_line += 1
+        channel_rule_meta.save()
     score_rules.delay(request.DATA['channel'])
     return HttpResponse(status=201)

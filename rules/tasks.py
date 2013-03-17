@@ -13,6 +13,7 @@ celery = Celery('rules', backend='redis://localhost', broker='amqp://guest:guest
 
 @celery.task
 def score_rules(channel_slug):
+  # This should only get active rules
   rules = Rule.objects.all()
   g = group(score.s(rule) for rule in rules)
   g.apply_async()
