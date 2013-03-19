@@ -28,6 +28,7 @@ class Rule(models.Model):
   def score(self, line, channel_slug, *args, **kwargs):
     nick = Nick.get_nick(line)
     if nick:
+      # Make sure 7 is the right number here
       if re.search(self.rule, line[7:]):
         channel = Channel.objects.get(slug=channel_slug)
         score = Score(nick=nick, rule=self, channel=channel, date=channel.current_date, line_id=channel.current_line)
@@ -93,17 +94,10 @@ class Nick(models.Model):
     # Standard line /[.*] <.*>/
 
     # [.*] Action: <nick>
+    # Action: smerwin goes long on marshmallows
 
     # [.*] Nick change: <nick>
-
-    # [.*] Nick change: <nick>
-
-    # join/leave?
-    # [11:25] Charon (~nschmidt@74.63.52.2) left irc: Ping timeout: 180 seconds
-    # [11:59] Charon (~nschmidt@74.63.52.2) joined #avara.
-
-    # mode change: [.*] #<channel_slug>, or just the #
-    # #avara: mode change '+o Charon' by jonah!~alek@ly.sine.com
+    # Nick change: vetere -> drsmokey
 
     # kicks
     # fet kicked from #avara by jake
@@ -111,8 +105,12 @@ class Nick(models.Model):
     # topic change
     # Topic changed on #avara by m!maschas@ur.sine.com: can a bear get breast cancer?
 
-    # nick change
-    # Nick change: vetere -> drsmokey
+    # join/leave?
+    # [11:25] Charon (~nschmidt@74.63.52.2) left irc: Ping timeout: 180 seconds
+    # [11:59] Charon (~nschmidt@74.63.52.2) joined #avara.
+
+    # mode change: [.*] #<channel_slug>, or just the #
+    # #avara: mode change '+o Charon' by jonah!~alek@ly.sine.com
 
     #ignore all else
 
