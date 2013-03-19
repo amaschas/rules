@@ -68,7 +68,7 @@ class LogUpdateHandler(FileSystemEventHandler):
 
     # For each line in the file, insert into redis, keyed by the channel name and line number
     for line in self.file:
-      # print '%s-%s: %s' % (sys.argv[2], self.redis_index, line.strip())
+      print '%s-%s: %s' % (sys.argv[2], self.redis_index, line.strip())
       self.r.set('%s-%s' % (sys.argv[2], self.redis_index), line.strip())
       self.redis_index += 1
 

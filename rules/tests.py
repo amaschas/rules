@@ -1,3 +1,4 @@
+import redis, re
 from django.test import TestCase
 from django.utils import unittest
 from django.conf import settings
@@ -5,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from rules.tasks import *
 from signals import update_rules
+from rules.models import *
 
 class TestGateway(TestCase):
 
@@ -16,7 +18,6 @@ class TestGateway(TestCase):
     for rule in rules:
       update_rules.connect(rule.score)
     update_rules.send('test_score_task')
-    # score_rules.delay('test')
 
   def create_test_data(self):
     u = User(1, 'testing', 'testing@test.com', 'testing')
@@ -27,3 +28,17 @@ class TestGateway(TestCase):
     r1.save()
     r2.save()
     r3.save()
+
+  def test_lines(self):
+    r = redis.Redis(host='localhost', port=6379, db=0)
+    line_index = 0
+    line = r.get('%s-%d' % ('avara', line_index))
+    while line:
+      if not re.match('\[.*\] <.*>', line):
+        print line
+      line_index += 1
+      line = r.get('%s-%d' % ('avara', line_index))
+
+  def test_channel_functions(self):
+    c = Channel(title='testing', slug='testing')
+    print c.update_current_line(2)
