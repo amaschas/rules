@@ -8,7 +8,8 @@ from watchdog.events import FileSystemEventHandler
 
 # argv[1]: target directory
 # argv[2]: channel name (used as file filter string)
-# TODO: user and pw args
+# TODO: user and pw args, maybe channel should be a distinct arg
+# named args?
 # Feeds directory of log files into redis, and notifies the Django app when shit changes
 # invoke like this: python logwatch.py /path/to/logs/ <filter string for logs>
 
@@ -23,7 +24,7 @@ class LogUpdateHandler(FileSystemEventHandler):
     # Open the first file in the queue
     self.file = open(self.dir.popleft(), 'r')
 
-    # Init ourself some redis
+    # Init ourselves some redis
     self.r = redis.Redis(host='localhost', port=6379, db=0)
     self.redis_index = 0
 
@@ -43,24 +44,20 @@ class LogUpdateHandler(FileSystemEventHandler):
   def on_modified(self, event):
     if sys.argv[2] in os.path.basename(event.src_path):
       self.ReadLog()
+      self.score()
 
-  #TODO: method that triggers the dango app api
-  # probably going to need:
-  # h = Http(disable_ssl_certificate_validation=True) when using https for production
-  #not sure if we need:
-  # h.add_certificate('serverkey.pem', 'servercert.pem', '')
+  # Makes an API request to the Django app that starts the scoring process
+  def score(self):
+    h = Http()
+    resp, content = h.request("http://127.0.0.1:8000/score/", "POST", json.dumps({'channel' : sys.argv[2]}), headers={'content-type':'application/json'})
 
-  # EXAMPLE:
-  # import httplib2
-  # h = httplib2.Http(".cache")
-  # h.add_credentials('name', 'password')
-  # resp, content = h.request("https://example.org/chap/2", 
-  #     "PUT", body="This is text", 
-  #     headers={'content-type':'text/plain'} )
+    #not sure if we need:
+    # h.add_certificate('serverkey.pem', 'servercert.pem', '')
 
-  # Need to watch out for "HTTPS support is only available if the socket module was compiled with SSL support."
-    # h = Http()
-    # resp, content = h.request("http://127.0.0.1:8000/update/", "POST", json.dumps({'update' : 'avara'}), headers={'content-type':'application/json'})
+    # For Production
+    # h = Http(disable_ssl_certificate_validation=True)
+    # h.add_credentials('name', 'password')
+    # resp, content = h.request("https://127.0.0.1:8000/score/", "POST", json.dumps({'channel' : sys.argv[2]}), headers={'content-type':'application/json'})
 
   def ReadLog(self):
     # Set byte position in file
@@ -83,6 +80,8 @@ class LogUpdateHandler(FileSystemEventHandler):
       self.where = self.file.tell()
 
 if __name__ == "__main__":
+  #TODO verify args here
+
   # Initializing watchdog stuff
   path = sys.argv[1] if len(sys.argv) > 1 else '.'
   event_handler = LogUpdateHandler()

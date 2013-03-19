@@ -1,6 +1,6 @@
 # nginx config for rules.sine.com
 server {
-    listen   8001;
+    listen   8000;
     server_name rules.sine.com;
     # no security problem here, since / is always passed to upstream
     root /usr/share/django/rules/rules;
