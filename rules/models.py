@@ -3,48 +3,65 @@ from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import User
 from django.dispatch import receiver
-from signals import update_rules
 from django.db.models.signals import post_init
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models.signals import post_save
+
+
+STATUSES = (
+  ('active', 'Actively Scoring'),
+  ('scoring', 'Initial Scoring'),
+  ('new', 'New')
+)
 
 class Rule(models.Model):
-  RULE_STATUSES = (
-      ('active', 'Actively Scoring'),
-      ('scoring', 'Initial Scoring'),
-      ('new', 'New')
-  )
   creator = models.ForeignKey(User)
   name = models.CharField(max_length=100)
   rule = models.CharField(max_length=100)
-  status = models.CharField(choices=RULE_STATUSES, max_length=20, default='new')
+  status = models.CharField(choices=STATUSES, max_length=20, default='new')
   def __unicode__(self):
       return self.name
 
-  # Invokes the initial rule scoring task after save
-  def save(self, *args, **kwargs):
-    super(Rule, self).save(*args, **kwargs)
-    initial_rule_score.delay(self)
-
   # Gets a line and a channel slug, score the line against the rule, for the channel
+  # TODO this needs to receive the line number and date, so as not to rely on the channel model for state
   def score(self, line, channel_slug, *args, **kwargs):
+    print 'actually scoring'
     nick = Nick.get_nick(line)
     if nick:
       # Score line minus timestamp
       if re.search(self.rule, line[8:]):
         channel = Channel.objects.get(slug=channel_slug)
-        score = Score(nick=nick, rule=self, channel=channel, date=channel.current_date, line_id=channel.current_line)
+        # print 'scoring line %d' % 
+        score = Score(nick=nick, rule=self, channel=channel, date=channel.start_date, line_id=channel.current_line)
         score.save()
         return True
     return False
 
+# post_save.connect(rule_score_receiver, sender=Rule)
+@receiver(post_save, sender=Rule)
+def rule_score_receiver(sender, **kwargs):
+  print kwargs
+  try:
+    if 'rule' in kwargs['update_fields']:
+      pass
+  except TypeError:
+    if kwargs['created']:
+      pass
+    else:
+      return
+  print 'scoring'
+  from tasks import initial_rule_score
+  initial_rule_score.delay(kwargs['instance'])
+
 
 class Channel(models.Model):
   title = models.CharField(max_length=100)
-  slug = models.CharField(max_length=20)
+  slug = models.CharField(max_length=20, unique=True)
   redis_db = models.IntegerField(default=0)
   current_line = models.BigIntegerField(default=0)
   start_date = models.DateTimeField(blank=True, null=True)
   current_date = models.DateTimeField(blank=True, null=True)
+  status = models.CharField(choices=STATUSES, max_length=20, default='new')
   def __unicode__(self):
       return self.title
 
@@ -75,18 +92,24 @@ class Channel(models.Model):
     else:
       return False
 
-
-class Score(models.Model):
-  nick = models.ForeignKey(User)
-  rule = models.ForeignKey(Rule)
-  channel = models.ForeignKey(Channel)
-  date = models.DateTimeField()
-  line_id = models.BigIntegerField(default=0)
+# post_save.connect(channel_score_receiver, sender=Channel)
+@receiver(post_save, sender=Channel)
+def channel_score_receiver(sender, **kwargs):
+  try:
+    if 'status' in kwargs['update_fields']:
+      pass
+  except TypeError:
+    if kwargs['created']:
+      pass
+    else:
+      return
+  from tasks import initial_channel_score
+  initial_channel_score.delay(kwargs['instance'])
 
 
 class Nick(models.Model):
   user = models.ForeignKey(User, blank=True, null=True)
-  name = models.CharField(max_length=100)
+  name = models.CharField(max_length=100, unique=True)
 
   # Gets or creates a nick object from a line
   @staticmethod
@@ -127,3 +150,10 @@ class Nick(models.Model):
       return nick
     else:
       return False
+
+class Score(models.Model):
+  nick = models.ForeignKey(Nick)
+  rule = models.ForeignKey(Rule)
+  channel = models.ForeignKey(Channel)
+  date = models.DateTimeField()
+  line_id = models.BigIntegerField(default=0)

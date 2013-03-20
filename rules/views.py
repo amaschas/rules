@@ -6,6 +6,7 @@ from django.views.generic.base import TemplateView, View
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 
 from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -59,20 +60,23 @@ class ChannelCreateView(CreateView):
 # Receives a score request for a channel, gets the next line, starts the scoring process
 class ScoreView(APIView):
   def post(self, request):
-    channel = Channel.objects.get(slug=request.DATA['channel'])
-    r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
+    try:
+      channel = Channel.objects.filter(slug=request.DATA['channel'], status='active')
+      r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
 
-    # Get the next line
-    next_line_index = channel.current_line + 1
-    # next_line = r.get('%s-%d' % (channel.slug, next_line_index))
-    next_line = r.get('avara-2523')
-    if next_line:
+      # Get the next line
+      next_line_index = channel.current_line + 1
+      next_line = r.get('%s-%d' % (channel.slug, next_line_index))
+      # next_line = r.get('avara-2523')
+      if next_line:
 
-      # Update the line here, so rule.score() can get the updated line from the channel
-      channel.update_current_line(next_line_index)
-      channel.save()
+        # Update the line here, so rule.score() can get the updated line from the channel
+        channel.update_current_line(next_line_index)
+        channel.save()
 
-      # If update_current_date returns false, line is not a fate, score it
-      if not channel.update_current_date(next_line):
-        score_rules.delay(request.DATA['channel'], next_line)
+        # If update_current_date returns false, line is not a fate, score it
+        if not channel.update_current_date(next_line):
+          score_rules.delay(request.DATA['channel'], next_line)
+    except ObjectDoesNotExist:
+      pass
     return HttpResponse(status=201)

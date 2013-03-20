@@ -29,6 +29,16 @@ class TestGateway(TestCase):
     r2.save()
     r3.save()
 
+  def test_save(self):
+    # c = Channel(title='testing', slug='testing')
+    # c.save()
+    u = User(username='testing', email='testing@test.com', password='testing')
+    u.save()
+    r1 = Rule(creator=u, name='Test1', rule='test1')
+    r1.save()
+    r1.status='active'
+    r1.save(update_fields=['status'])
+
   def test_lines(self):
     r = redis.Redis(host='localhost', port=6379, db=0)
     line_index = 0
