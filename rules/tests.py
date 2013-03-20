@@ -35,9 +35,15 @@ class TestGateway(TestCase):
     line = r.get('%s-%d' % ('avara', line_index))
     while line:
       if not re.match('\[.*\] <.*>', line):
-        print line
+        # print '%d - %s' % (line_index, line[8:])
+        Nick.get_nick(line)
       line_index += 1
       line = r.get('%s-%d' % ('avara', line_index))
+
+  def test_get_nick(self):
+    r = redis.Redis(host='localhost', port=6379, db=0)
+    line = r.get('avara-1027')
+    Nick.get_nick(line)
 
   def test_channel_functions(self):
     c = Channel(title='testing', slug='testing')

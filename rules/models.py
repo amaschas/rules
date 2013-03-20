@@ -28,8 +28,8 @@ class Rule(models.Model):
   def score(self, line, channel_slug, *args, **kwargs):
     nick = Nick.get_nick(line)
     if nick:
-      # Make sure 7 is the right number here
-      if re.search(self.rule, line[7:]):
+      # Score line minus timestamp
+      if re.search(self.rule, line[8:]):
         channel = Channel.objects.get(slug=channel_slug)
         score = Score(nick=nick, rule=self, channel=channel, date=channel.current_date, line_id=channel.current_line)
         score.save()
@@ -87,31 +87,65 @@ class Nick(models.Model):
   user = models.ForeignKey(User, blank=True, null=True)
   name = models.CharField(max_length=100)
 
+  @staticmethod
+  def nick_regex(line, regex):
+    nick_match = re.match(regex, line)
+    if nick_match:
+      return nick_match.group('nick')
+
   # Gets a line, checks for a variety of line beginnings, matches and grabs the nick from the appropriate pattern, creates a nick if it doesn't already exist, grabs it if it does, returns nick or false otherwise
   @staticmethod
   def get_nick(line):
 
-    # Standard line /[.*] <.*>/
+    #[a-zA-Z0-9\_\-\\\[\]\{\}\^\`\|]
+    nick_regex_string = '[a-zA-Z0-9_-\{\}\^\`\|]+'
 
-    # [.*] Action: <nick>
+    # Cut off timestamp
+    line = line[8:]
+    print line
+
+    # Regular line
+    nick = Nick.nick_regex(line, '<(?P<nick>%s)>' % nick_regex_string)
+    if nick:
+      print '<%s>' % nick
+
+    # Action: nick
     # Action: smerwin goes long on marshmallows
+    nick = Nick.nick_regex(line, 'Action: (?P<nick>%s) ' % nick_regex_string)
+    if nick:
+      print '<%s>' % nick
 
     # [.*] Nick change: <nick>
     # Nick change: vetere -> drsmokey
-
-    # kicks
-    # fet kicked from #avara by jake
+    nick = Nick.nick_regex(line, 'Nick change: (?P<nick>%s) ' % nick_regex_string)
+    if nick:
+      print '<%s>' % nick
 
     # topic change
     # Topic changed on #avara by m!maschas@ur.sine.com: can a bear get breast cancer?
+    nick = Nick.nick_regex(line, 'Topic changed on [#&][[a-zA-Z0-9]+ by (?P<nick>%s)\!' % nick_regex_string)
+    if nick:
+      print '<%s>' % nick
+
+    # kicks
+    # fet kicked from #avara by jake
+    nick = Nick.nick_regex(line, '%s kicked from [#&][[a-zA-Z0-9]+ by (?P<nick>%s)' % (nick_regex_string, nick_regex_string))
+    if nick:
+      print '<%s>' % nick
 
     # join/leave?
     # [11:25] Charon (~nschmidt@74.63.52.2) left irc: Ping timeout: 180 seconds
     # [11:59] Charon (~nschmidt@74.63.52.2) joined #avara.
+    nick = Nick.nick_regex(line, '(?P<nick>%s) \(.*\) [left|joined]' % nick_regex_string)
+    if nick:
+      print '<%s>' % nick
 
     # mode change: [.*] #<channel_slug>, or just the #
     # #avara: mode change '+o Charon' by jonah!~alek@ly.sine.com
+    nick = Nick.nick_regex(line, '[#&][[a-zA-Z0-9]+: mode change \'.*\' by (?P<nick>%s)\!' % nick_regex_string)
+    if nick:
+      print '<%s>' % nick
 
     #ignore all else
-
+    # else:
     pass
