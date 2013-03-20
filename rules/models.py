@@ -104,47 +104,20 @@ class Nick(models.Model):
     line = line[8:]
     print line
 
-    # Regular line
-    nick = Nick.nick_regex(line, '<(?P<nick>%s)>' % nick_regex_string)
-    if nick:
-      print '<%s>' % nick
+    regex_strings = [
+      '<(?P<nick>%s)>' % nick_regex_string,
+      'Action: (?P<nick>%s) ' % nick_regex_string,
+      'Nick change: (?P<nick>%s) ' % nick_regex_string,
+      'Topic changed on [#&][[a-zA-Z0-9]+ by (?P<nick>%s)\!' % nick_regex_string,
+      '%s kicked from [#&][[a-zA-Z0-9]+ by (?P<nick>%s)' % (nick_regex_string, nick_regex_string),
+      '(?P<nick>%s) \(.*\) [left|joined]' % nick_regex_string,
+      '[#&][[a-zA-Z0-9]+: mode change \'.*\' by (?P<nick>%s)\!' % nick_regex_string
+    ]
 
-    # Action: nick
-    # Action: smerwin goes long on marshmallows
-    nick = Nick.nick_regex(line, 'Action: (?P<nick>%s) ' % nick_regex_string)
-    if nick:
-      print '<%s>' % nick
-
-    # [.*] Nick change: <nick>
-    # Nick change: vetere -> drsmokey
-    nick = Nick.nick_regex(line, 'Nick change: (?P<nick>%s) ' % nick_regex_string)
-    if nick:
-      print '<%s>' % nick
-
-    # topic change
-    # Topic changed on #avara by m!maschas@ur.sine.com: can a bear get breast cancer?
-    nick = Nick.nick_regex(line, 'Topic changed on [#&][[a-zA-Z0-9]+ by (?P<nick>%s)\!' % nick_regex_string)
-    if nick:
-      print '<%s>' % nick
-
-    # kicks
-    # fet kicked from #avara by jake
-    nick = Nick.nick_regex(line, '%s kicked from [#&][[a-zA-Z0-9]+ by (?P<nick>%s)' % (nick_regex_string, nick_regex_string))
-    if nick:
-      print '<%s>' % nick
-
-    # join/leave?
-    # [11:25] Charon (~nschmidt@74.63.52.2) left irc: Ping timeout: 180 seconds
-    # [11:59] Charon (~nschmidt@74.63.52.2) joined #avara.
-    nick = Nick.nick_regex(line, '(?P<nick>%s) \(.*\) [left|joined]' % nick_regex_string)
-    if nick:
-      print '<%s>' % nick
-
-    # mode change: [.*] #<channel_slug>, or just the #
-    # #avara: mode change '+o Charon' by jonah!~alek@ly.sine.com
-    nick = Nick.nick_regex(line, '[#&][[a-zA-Z0-9]+: mode change \'.*\' by (?P<nick>%s)\!' % nick_regex_string)
-    if nick:
-      print '<%s>' % nick
+    for regex_string in regex_strings:
+      nick = Nick.nick_regex(line, regex_string % nick_regex_string)
+      if nick:
+        print '<%s>' % nick
 
     #ignore all else
     # else:
