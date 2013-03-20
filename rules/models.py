@@ -24,15 +24,14 @@ class Rule(models.Model):
 
   # Gets a line and a channel slug, score the line against the rule, for the channel
   # TODO this needs to receive the line number and date, so as not to rely on the channel model for state
-  def score(self, line, channel_slug, *args, **kwargs):
-    print 'actually scoring'
+  def score(self, line, channel, date, line_index, *args, **kwargs):
+    # print 'actually scoring'
     nick = Nick.get_nick(line)
     if nick:
       # Score line minus timestamp
       if re.search(self.rule, line[8:]):
-        channel = Channel.objects.get(slug=channel_slug)
-        # print 'scoring line %d' % 
-        score = Score(nick=nick, rule=self, channel=channel, date=channel.start_date, line_id=channel.current_line)
+        print 'scoring line %d' % line_index
+        score = Score(nick=nick, rule=self, channel=channel, date=date, line_id=line_index)
         score.save()
         return True
     return False
@@ -40,18 +39,19 @@ class Rule(models.Model):
 # post_save.connect(rule_score_receiver, sender=Rule)
 @receiver(post_save, sender=Rule)
 def rule_score_receiver(sender, **kwargs):
+  from tasks import initial_rule_score
   print kwargs
   try:
     if 'rule' in kwargs['update_fields']:
-      pass
+      print 'starting scoring rule - rule changed'
+      initial_rule_score.delay(kwargs['instance'])
   except TypeError:
     if kwargs['created']:
-      pass
+      print 'starting scoring rule - created'
+      initial_rule_score.delay(kwargs['instance'])
     else:
-      return
-  print 'scoring'
-  from tasks import initial_rule_score
-  initial_rule_score.delay(kwargs['instance'])
+      print 'ignoring score run'
+      pass
 
 
 class Channel(models.Model):
@@ -103,6 +103,7 @@ def channel_score_receiver(sender, **kwargs):
       pass
     else:
       return
+  print 'starting scoring channel'
   from tasks import initial_channel_score
   initial_channel_score.delay(kwargs['instance'])
 

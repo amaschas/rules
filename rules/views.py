@@ -61,7 +61,7 @@ class ChannelCreateView(CreateView):
 class ScoreView(APIView):
   def post(self, request):
     try:
-      channel = Channel.objects.filter(slug=request.DATA['channel'], status='active')
+      channel = Channel.objects.get(slug=request.DATA['channel'])
       r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
 
       # Get the next line
@@ -76,7 +76,7 @@ class ScoreView(APIView):
 
         # If update_current_date returns false, line is not a fate, score it
         if not channel.update_current_date(next_line):
-          score_rules.delay(request.DATA['channel'], next_line)
+          score_rules.delay(channel=channel, line=next_line)
     except ObjectDoesNotExist:
       pass
     return HttpResponse(status=201)
