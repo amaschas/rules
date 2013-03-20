@@ -35,8 +35,11 @@ class TestGateway(TestCase):
     line = r.get('%s-%d' % ('avara', line_index))
     while line:
       if not re.match('\[.*\] <.*>', line):
+        print line
         # print '%d - %s' % (line_index, line[8:])
-        Nick.get_nick(line)
+        nick = Nick.get_nick(line)
+        if nick:
+          print nick.name
       line_index += 1
       line = r.get('%s-%d' % ('avara', line_index))
 

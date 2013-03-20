@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.dispatch import receiver
 from signals import update_rules
 from django.db.models.signals import post_init
+from django.core.exceptions import ObjectDoesNotExist
 
 class Rule(models.Model):
   RULE_STATUSES = (
@@ -87,23 +88,18 @@ class Nick(models.Model):
   user = models.ForeignKey(User, blank=True, null=True)
   name = models.CharField(max_length=100)
 
-  @staticmethod
-  def nick_regex(line, regex):
-    nick_match = re.match(regex, line)
-    if nick_match:
-      return nick_match.group('nick')
-
-  # Gets a line, checks for a variety of line beginnings, matches and grabs the nick from the appropriate pattern, creates a nick if it doesn't already exist, grabs it if it does, returns nick or false otherwise
+  # Gets or creates a nick object from a line
   @staticmethod
   def get_nick(line):
 
     #[a-zA-Z0-9\_\-\\\[\]\{\}\^\`\|]
+    # Regex to match irc nick strings
     nick_regex_string = '[a-zA-Z0-9_-\{\}\^\`\|]+'
 
     # Cut off timestamp
     line = line[8:]
-    print line
 
+    # Match strings for irc line types
     regex_strings = [
       '<(?P<nick>%s)>' % nick_regex_string,
       'Action: (?P<nick>%s) ' % nick_regex_string,
@@ -114,11 +110,20 @@ class Nick(models.Model):
       '[#&][[a-zA-Z0-9]+: mode change \'.*\' by (?P<nick>%s)\!' % nick_regex_string
     ]
 
+    nick_string = ''
+    # Search for nick in line using each match pattern
     for regex_string in regex_strings:
-      nick = Nick.nick_regex(line, regex_string % nick_regex_string)
-      if nick:
-        print '<%s>' % nick
+      nick_match = re.match(regex_string, line)
+      if nick_match:
+        nick_string = nick_match.group('nick')
 
-    #ignore all else
-    # else:
-    pass
+    # If nick string exists, either create or return existing, otherwise return False
+    if nick_string:
+      try:
+        nick = Nick.objects.get(name=nick_string)
+      except ObjectDoesNotExist:
+        nick = Nick(name=nick_string)
+        nick.save()
+      return nick
+    else:
+      return False
