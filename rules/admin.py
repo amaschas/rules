@@ -17,3 +17,8 @@ class ChannelAdmin(admin.ModelAdmin):
   pass
 
 admin.site.register(Channel, ChannelAdmin)
+
+class NickAdmin(admin.ModelAdmin):
+  pass
+
+admin.site.register(Nick, NickAdmin)

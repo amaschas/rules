@@ -45,6 +45,16 @@ class RuleCreateView(CreateView):
     initial['creator'] = self.request.user
     return initial
 
+# TODO: I think this is going to need a custom view and form
+class RuleUpdateView(UpdateView):
+  model = Rule
+  form_class = RuleUpdateForm
+  template_name = 'rule-form.html'
+
+  def get_object(self, queryset=None):
+      obj = Rule.objects.get(id=self.kwargs['id'])
+      return obj
+
 
 class ChannelCreateView(CreateView):
   model = Channel
@@ -56,6 +66,9 @@ class ChannelCreateView(CreateView):
   #   initial['creator'] = self.request.user
   #   return initial
 
+
+# TODO view that shows a single Score (basically the line with the regex match highlighted)
+# takes a Score object as an arg - test scoring can just send an unsaved instance - need to release instance afterwards?
 
 # Receives a score request for a channel, gets the next line, starts the scoring process
 class ScoreView(APIView):
@@ -74,9 +87,13 @@ class ScoreView(APIView):
         channel.update_current_line(next_line_index)
         channel.save()
 
-        # If update_current_date returns false, line is not a fate, score it
+        # If update_current_date returns false, line is not a date, score it
         if not channel.update_current_date(next_line):
-          score_rules.delay(channel=channel, line=next_line)
+
+          # If we can find a nick in the line, score it
+          nick = Nick.get_nick(line)
+          if nick:
+            score_rules.delay(channel=channel, line=next_line, nick=nick)
     except ObjectDoesNotExist:
       pass
     return HttpResponse(status=201)

@@ -1,4 +1,4 @@
-import re
+import re, time
 from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import User
@@ -6,6 +6,10 @@ from django.dispatch import receiver
 from django.db.models.signals import post_init
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import post_save
+from django.db import IntegrityError
+
+import logging
+log = logging.getLogger(__name__)
 
 
 STATUSES = (
@@ -22,36 +26,28 @@ class Rule(models.Model):
   def __unicode__(self):
       return self.name
 
-  # Gets a line and a channel slug, score the line against the rule, for the channel
-  # TODO this needs to receive the line number and date, so as not to rely on the channel model for state
-  def score(self, line, channel, date, line_index, *args, **kwargs):
-    # print 'actually scoring'
-    nick = Nick.get_nick(line)
-    if nick:
-      # Score line minus timestamp
-      if re.search(self.rule, line[8:]):
-        print 'scoring line %d' % line_index
-        score = Score(nick=nick, rule=self, channel=channel, date=date, line_id=line_index)
-        score.save()
-        return True
-    return False
-
-# post_save.connect(rule_score_receiver, sender=Rule)
-@receiver(post_save, sender=Rule)
-def rule_score_receiver(sender, **kwargs):
-  from tasks import initial_rule_score
-  print kwargs
-  try:
-    if 'rule' in kwargs['update_fields']:
-      print 'starting scoring rule - rule changed'
-      initial_rule_score.delay(kwargs['instance'])
-  except TypeError:
-    if kwargs['created']:
-      print 'starting scoring rule - created'
-      initial_rule_score.delay(kwargs['instance'])
+  def save(self, score=False, *args, **kwargs):
+    # log.debug('rule save started')
+    # log.debug(self.id)
+    # log.debug(score)
+    if score or self.id == None:
+      # log.debug('rule saving - will score')
+      super(Rule, self).save(*args, **kwargs)
+      from tasks import initial_rule_score
+      initial_rule_score.delay(self)
     else:
-      print 'ignoring score run'
-      pass
+      # log.debug('rule saving - will not score')
+      super(Rule, self).save(*args, **kwargs)
+
+  def score(self, line, nick, channel, date, line_index, *args, **kwargs):
+    # Score line minus timestamp
+    if re.search(self.rule, line[8:]):
+      # log.debug('scoring line %d' % line_index)
+      score = Score(nick=nick, rule=self, channel=channel, date=date, line_id=line_index)
+      score.save()
+      return True
+    else:
+      return False
 
 
 class Channel(models.Model):
@@ -64,6 +60,19 @@ class Channel(models.Model):
   status = models.CharField(choices=STATUSES, max_length=20, default='new')
   def __unicode__(self):
       return self.title
+
+  def save(self, score=False, *args, **kwargs):
+    # log.debug('rule save started')
+    # log.debug(self.id)
+    # log.debug(score)
+    if score or self.id == None:
+      # log.debug('rule saving - will score')
+      super(Channel, self).save(*args, **kwargs)
+      from tasks import initial_channel_score
+      initial_channel_score.delay(self)
+    else:
+      # log.debug('rule saving - will not score')
+      super(Rule, self).save(*args, **kwargs)
 
   # Gets a line, checks for a date line, returns the formatted date or false otherwise
   @staticmethod
@@ -92,25 +101,12 @@ class Channel(models.Model):
     else:
       return False
 
-# post_save.connect(channel_score_receiver, sender=Channel)
-@receiver(post_save, sender=Channel)
-def channel_score_receiver(sender, **kwargs):
-  try:
-    if 'status' in kwargs['update_fields']:
-      pass
-  except TypeError:
-    if kwargs['created']:
-      pass
-    else:
-      return
-  print 'starting scoring channel'
-  from tasks import initial_channel_score
-  initial_channel_score.delay(kwargs['instance'])
-
 
 class Nick(models.Model):
   user = models.ForeignKey(User, blank=True, null=True)
   name = models.CharField(max_length=100, unique=True)
+  def __unicode__(self):
+      return self.name
 
   # Gets or creates a nick object from a line
   @staticmethod
@@ -145,9 +141,11 @@ class Nick(models.Model):
     if nick_string:
       try:
         nick = Nick.objects.get(name=nick_string)
+        # log.debug('nick exists, getting: %s', nick.name)
       except ObjectDoesNotExist:
         nick = Nick(name=nick_string)
         nick.save()
+        # log.debug('adding nick: %s', nick.name)
       return nick
     else:
       return False

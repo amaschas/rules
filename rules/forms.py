@@ -21,4 +21,15 @@ class RuleForm(forms.ModelForm):
     self.fields['rule'] = forms.CharField(widget=forms.TextInput(attrs=dict(placeholder='Rule Regex')))
   class Meta:
     model = Rule
-    # exclude = ('source','description')
+    exclude = ('status',)
+
+# TODO: I think this is going to need a custom view and form
+class RuleUpdateForm(RuleForm):
+  def __init__(self, *args, **kwargs):
+    super(RuleUpdateForm, self).__init__(*args, **kwargs)
+    del self.fields['creator']
+
+    def save(self, *args, **kwargs):
+      print 'saving'
+      # kwargs['instance'].save(update_fields=['name', 'rule'])
+      # super(RuleUpdateForm, self).__init__(*args, **kwargs)

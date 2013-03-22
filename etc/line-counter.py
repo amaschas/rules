@@ -13,6 +13,7 @@ def ReadLog(logdir):
     file = open(logdir.popleft(), 'r')
     for line in file:
       line_index += 1
+    print line_index
     line_index += ReadLog(logdir)
   except IndexError:
     pass
