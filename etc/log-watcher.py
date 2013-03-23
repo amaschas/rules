@@ -35,7 +35,6 @@ class LogUpdateHandler(FileSystemEventHandler):
       if args.filter_string and args.filter_string not in os.path.basename(event.src_path):
         pass
       else:
-        print 'created'
         self.dir.append(event.src_path)
         self.ReadLog()
         self.score()
@@ -46,7 +45,6 @@ class LogUpdateHandler(FileSystemEventHandler):
       if args.filter_string and args.filter_string not in os.path.basename(event.src_path):
         pass
       else:
-        print 'modified'
         self.ReadLog()
         self.score()
 
@@ -106,8 +104,6 @@ if __name__ == "__main__":
   args.path = os.path.normpath(args.path) + os.sep
   if not os.path.isdir(args.path):
     raise ValueError("Invalid Path")
-
-  print args
 
   # Initializing watchdog stuff
   event_handler = LogUpdateHandler()
