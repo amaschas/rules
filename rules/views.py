@@ -73,6 +73,7 @@ class ChannelCreateView(CreateView):
 # Receives a score request for a channel, gets the next line, starts the scoring process
 class ScoreView(APIView):
   def post(self, request):
+    print request.DATA
     try:
       channel = Channel.objects.get(slug=request.DATA['channel'])
       r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
@@ -91,7 +92,7 @@ class ScoreView(APIView):
         if not channel.update_current_date(next_line):
 
           # If we can find a nick in the line, score it
-          nick = Nick.get_nick(line)
+          nick = Nick.get_nick(next_line)
           if nick:
             score_rules.delay(channel=channel, line=next_line, nick=nick)
     except ObjectDoesNotExist:

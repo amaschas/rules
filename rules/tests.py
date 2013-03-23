@@ -29,6 +29,13 @@ class TestGateway(TestCase):
     r2.save()
     r3.save()
 
+  def test_score_object(self):
+    c = Channel(title='testing', slug='testing')
+    n = Nick(name='test')
+    score = Score(nick=n, channel=c, line_id=0)
+    print score.nick
+
+
   def test_save(self):
     # c = Channel(title='testing', slug='testing')
     # c.save()

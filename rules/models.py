@@ -41,8 +41,9 @@ class Rule(models.Model):
 
   def score(self, line, nick, channel, date, line_index, *args, **kwargs):
     # Score line minus timestamp
+    log.debug('testing line %d - %s' % (line_index, line))
     if re.search(self.rule, line[8:]):
-      # log.debug('scoring line %d' % line_index)
+      log.debug('scoring line %d - %s' % (line_index, line))
       score = Score(nick=nick, rule=self, channel=channel, date=date, line_id=line_index)
       score.save()
       return True
@@ -72,7 +73,7 @@ class Channel(models.Model):
       initial_channel_score.delay(self)
     else:
       # log.debug('rule saving - will not score')
-      super(Rule, self).save(*args, **kwargs)
+      super(Channel, self).save(*args, **kwargs)
 
   # Gets a line, checks for a date line, returns the formatted date or false otherwise
   @staticmethod
@@ -99,6 +100,7 @@ class Channel(models.Model):
       self.save()
       return True
     else:
+      #TODO if the line has a timestamp, add the time to the current date
       return False
 
 
