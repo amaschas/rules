@@ -28,7 +28,9 @@ def score_rules(channel, line, nick):
 
 # Receives a rule, line and channel slug, calls score on the rule instance with the parameters
 @celery.task
+# def score(score, line):
 def score(rule, line, nick, channel, date, line_index):
+  # return rule.score(score=score, line=line)
   return rule.score(line=line, nick=nick, channel=channel, date=date, line_index=line_index)
 
 

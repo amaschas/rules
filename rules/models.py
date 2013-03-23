@@ -39,6 +39,7 @@ class Rule(models.Model):
       # log.debug('rule saving - will not score')
       super(Rule, self).save(*args, **kwargs)
 
+  # def score(self, score, line, *args, **kwargs):
   def score(self, line, nick, channel, date, line_index, *args, **kwargs):
     # Score line minus timestamp
     log.debug('testing line %d - %s' % (line_index, line))
