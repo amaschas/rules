@@ -1,4 +1,4 @@
-import re, time
+import re, time, redis
 from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import User
@@ -26,6 +26,7 @@ class Rule(models.Model):
   def __unicode__(self):
       return self.name
 
+  # TODO might be able to get rid of the score arg
   def save(self, score=False, *args, **kwargs):
     # log.debug('rule save started')
     # log.debug(self.id)
@@ -39,30 +40,19 @@ class Rule(models.Model):
       # log.debug('rule saving - will not score')
       super(Rule, self).save(*args, **kwargs)
 
-  # def score(self, score, line, *args, **kwargs):
-  def score(self, line, nick, channel, date, line_index, *args, **kwargs):
-    # Score line minus timestamp
-    log.debug('testing line %d - %s' % (line_index, line))
-    if re.search(self.rule, line[8:]):
-      log.debug('scoring line %d - %s' % (line_index, line))
-      score = Score(nick=nick, rule=self, channel=channel, date=date, line_id=line_index)
-      score.save()
-      return True
-    else:
-      return False
-
 
 class Channel(models.Model):
   title = models.CharField(max_length=100)
   slug = models.CharField(max_length=20, unique=True)
   redis_db = models.IntegerField(default=0)
-  current_line = models.BigIntegerField(default=0)
+  current_line = models.IntegerField(default=0)
   start_date = models.DateTimeField(blank=True, null=True)
   current_date = models.DateTimeField(blank=True, null=True)
   status = models.CharField(choices=STATUSES, max_length=20, default='new')
   def __unicode__(self):
       return self.title
 
+  # TODO might be able to get rid of the score arg
   def save(self, score=False, *args, **kwargs):
     # log.debug('rule save started')
     # log.debug(self.id)
@@ -158,4 +148,21 @@ class Score(models.Model):
   rule = models.ForeignKey(Rule)
   channel = models.ForeignKey(Channel)
   date = models.DateTimeField()
-  line_id = models.BigIntegerField(default=0)
+  line_index = models.IntegerField(default=0)
+  score = models.IntegerField(default=1)
+
+  # Gets any line for any channel
+  @staticmethod
+  def get_line(channel, line_index):
+    r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
+    line = r.get('%s-%d' % (channel.slug, line_index))
+    if line:
+      return line
+    else:
+      return False
+
+  # Gets own line
+  def line(self):
+    return Score.get_line(self.channel, self.line_index)
+
+

@@ -29,7 +29,7 @@ class LogUpdateHandler(FileSystemEventHandler):
     self.ReadLog()
     FileSystemEventHandler.__init__(self)
 
-  # If a new file is created, append to list of files in target directory
+  # If a new file is created, append to list of files in target directory, run ReadLog and Score
   def on_created(self, event):
     if event.__class__.__name__ == 'FileCreatedEvent':
       if args.filter_string and args.filter_string not in os.path.basename(event.src_path):
@@ -39,7 +39,7 @@ class LogUpdateHandler(FileSystemEventHandler):
         self.ReadLog()
         self.score()
 
-  # If anything is modified, trigger ReadLog()
+  # If file is modified, run ReadLog and Score
   def on_modified(self, event):
     if event.__class__.__name__ == 'FileModifiedEvent':
       if args.filter_string and args.filter_string not in os.path.basename(event.src_path):

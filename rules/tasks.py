@@ -12,15 +12,14 @@ log = logging.getLogger(__name__)
 # Might not need a backend
 celery = Celery('rules', backend='redis://localhost', broker='amqp://guest:guest@localhost:5672//')
 
-#TODO scoring process should just use a score instance, that only saves in rule
-
 # Compiles a task group for all active rules, executes the group
 @celery.task
 def score_rules(channel, line, nick):
+  log.debug('compiling rule score tasks')
   try:
     rules = Rule.objects.filter(status='active')
-    # g = group(score.s(Score(rule=rule, nick=nick, channel=channel, date=channel.current_date, line_index=channel.current_line), line=line) for rule in rules)
-    g = group(score.s(rule=rule, line=line, nick=nick, channel=channel, date=channel.current_date, line_index=channel.current_line) for rule in rules)
+    print rules
+    g = group(score.s(Score(rule=rule, nick=nick, channel=channel, date=channel.current_date, line_index=channel.current_line), line=line) for rule in rules)
     g.apply_async()
   except ObjectDoesNotExist:
     pass
@@ -28,10 +27,15 @@ def score_rules(channel, line, nick):
 
 # Receives a rule, line and channel slug, calls score on the rule instance with the parameters
 @celery.task
-# def score(score, line):
-def score(rule, line, nick, channel, date, line_index):
-  # return rule.score(score=score, line=line)
-  return rule.score(line=line, nick=nick, channel=channel, date=date, line_index=line_index)
+def score(score, line):
+  log.debug('testing line %d - %s' % (score.line_index, line))
+  matches = len(re.findall(score.rule.rule, line))
+  if matches:
+    score.score = matches
+    score.save()
+    return True
+  else:
+    return False
 
 
 # Called from save() on Rule, scores every line of every channel against the rule, sets rule status appropriately
@@ -62,7 +66,7 @@ def initial_rule_score(rule):
         else:
           nick = Nick.get_nick(line)
           if nick:
-            score.delay(rule=rule, line=line, nick=nick, channel=channel, date=date, line_index=line_index)
+            score.delay(Score(rule=rule, nick=nick, channel=channel, date=date, line_index=line_index), line=line)
         line_index += 1
         line = r.get('%s-%d' % (channel.slug, line_index))
 
@@ -79,33 +83,36 @@ def initial_rule_score(rule):
 @celery.task
 def initial_channel_score(channel):
   try:
+    Score.objects.filter(channel=channel).delete()
     rules = Rule.objects.filter(status='active')
 
     # Channel is now scoring
     channel.status = 'scoring'
-    channel.save(update_fields=['status'])
+    channel.save()
     date = channel.start_date
     line_index = 0
     r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
 
     # For every line in the channel, call the score task
     line = r.get('%s-%d' % (channel.slug, line_index))
+
+    #TODO: channel counter gets incremented one too many times
     while line:
-      line_date = Channel.format_date_line(line)
-      if line_date:
-        date = line_date
-      else:
+      channel.update_current_line(line_index)
+      if not channel.update_current_date(line):
         # TODO get the timestamp from the post, add it to current_date, and use it
         # something like datetime.strptime(channel date stuff + split timestamp, '%a %b %d %Y blah blah')
         nick = Nick.get_nick(line)
         if nick:
           for rule in rules:
-            score.delay(rule=rule, line=line, nick=nick, channel=channel, date=date, line_index=line_index)
+            score.delay(Score(rule=rule, nick=nick, channel=channel, date=channel.current_date, line_index=line_index), line=line)
       line_index += 1
       line = r.get('%s-%d' % (channel.slug, line_index))
+      print line
 
     # Finished initial scoring channel, set it active to register with score_rules()
     channel.status = 'active'
-    channel.save(update_fields=['status'])
+    channel.save()
   except ObjectDoesNotExist:
     pass
+    #TODO: If there are no active rules, channel should get current_line and current_date anyway

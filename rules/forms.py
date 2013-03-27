@@ -4,6 +4,17 @@ from django.forms import ModelForm
 
 from models import *
 
+class TestForm(forms.Form):
+  choices = (
+    ('delete-channels', 'Delete all channels'),
+    ('delete-rules', 'Delete all rules'),
+    ('delete-nicks', 'Delete all nicks'),
+    ('delete-scores', 'Delete all scores'),
+    ('score-channels', 'Initial score channels'),
+    ('score-rules', 'Initial score rules'),
+  )
+  choices = forms.fields.MultipleChoiceField(label='test', choices=(choices), widget=forms.CheckboxSelectMultiple())
+
 class NickForm(forms.ModelForm):
   class Meta:
     model = Nick

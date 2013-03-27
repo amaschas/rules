@@ -32,8 +32,16 @@ class TestGateway(TestCase):
   def test_score_object(self):
     c = Channel(title='testing', slug='testing')
     n = Nick(name='test')
-    score = Score(nick=n, channel=c, line_id=0)
-    print score.nick
+    r = Rule(creator=u, name='Test1', rule='o')
+    score = Score(rule=r, nick=n, channel=c, line_index=0)
+    # print score.nick
+    score.delay(score, '1')
+
+  def test_regex_search(self):
+    r = redis.Redis(host='localhost', port=6379, db=0)
+    l = r.get('avara-1')
+    s = re.findall('hoorj', l)
+    print len(s)
 
 
   def test_save(self):
