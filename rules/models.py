@@ -11,18 +11,28 @@ from django.db import IntegrityError
 import logging
 log = logging.getLogger(__name__)
 
+class StatusHandler(models.Model):
+  STATUSES = (
+    ('active', 'Active'),
+    ('scoring', 'Scoring'),
+    ('new', 'New')
+  )
+  status = models.CharField(choices=STATUSES, max_length=20, default='new')
+  class Meta:
+        abstract = True
 
-STATUSES = (
-  ('active', 'Actively Scoring'),
-  ('scoring', 'Initial Scoring'),
-  ('new', 'New')
-)
+  def set_active(self):
+    self.status = 'active';
+    self.save()
 
-class Rule(models.Model):
+  def set_scoring(self):
+    self.status = 'scoring'
+    self.save()
+
+class Rule(StatusHandler):
   creator = models.ForeignKey(User)
   name = models.CharField(max_length=100)
   rule = models.CharField(max_length=100)
-  status = models.CharField(choices=STATUSES, max_length=20, default='new')
   def __unicode__(self):
       return self.name
 
@@ -41,14 +51,13 @@ class Rule(models.Model):
       super(Rule, self).save(*args, **kwargs)
 
 
-class Channel(models.Model):
+class Channel(StatusHandler):
   title = models.CharField(max_length=100)
   slug = models.CharField(max_length=20, unique=True)
   redis_db = models.IntegerField(default=0)
   current_line = models.IntegerField(default=0)
   start_date = models.DateTimeField(blank=True, null=True)
   current_date = models.DateTimeField(blank=True, null=True)
-  status = models.CharField(choices=STATUSES, max_length=20, default='new')
   def __unicode__(self):
       return self.title
 

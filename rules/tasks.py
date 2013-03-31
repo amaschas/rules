@@ -12,6 +12,7 @@ log = logging.getLogger(__name__)
 # Might not need a backend
 celery = Celery('rules', backend='redis://localhost', broker='amqp://guest:guest@localhost:5672//')
 
+# TODO this might not be necessary anymore
 # Compiles a task group for all active rules, executes the group
 @celery.task
 def score_rules(channel, line, nick):
@@ -39,7 +40,7 @@ def score(score, line):
     return False
 
 
-# Called from save() on Rule, scores every line of every channel against the rule, sets rule status appropriately
+# Scores the rule against every active channel, starting at index
 @celery.task
 def score_rule_from_index(rule, index=0):
   try:
@@ -48,11 +49,13 @@ def score_rule_from_index(rule, index=0):
     log.debug('initial_rule_score started')
 
     # Delete all previous scores for this rule
-    Score.objects.filter(rule=rule).delete()
+    Score.objects.filter(rule=rule, line_index__gte=index).delete()
 
     # Rule set status to scoring to avoid double scoring from new line events
     rule.status = 'scoring'
     rule.save()
+
+    # TODO use a task group for this
     for channel in channels:
       date = channel.start_date
       line_index = index
@@ -71,7 +74,7 @@ def score_rule_from_index(rule, index=0):
         line_index += 1
         line = r.get('%s-%d' % (channel.slug, line_index))
 
-    # Finished initial scoring rule, set it active to register with score_rules()
+    # Finished scoring rule, set it active to register with score_rules()
     rule.status = 'active'
     rule.save()
 
@@ -85,8 +88,7 @@ def score_rule_from_index(rule, index=0):
 #   for score in testing:
 #     print score.line_index
 
-
-# TODO use these score_from_index functions to do all scoring
+# Scores the channel against every active rule, starting at index
 @celery.task
 def score_channel_from_index(channel, index=0):
   try:
@@ -105,19 +107,22 @@ def score_channel_from_index(channel, index=0):
 
     #TODO: channel counter gets incremented one too many times (I think this is fixed now)
     while line:
+      # TODO I think I can get rid of line_index and just use channel.current_line
       channel.update_current_line(line_index)
       if not channel.update_current_date(line):
         # TODO get the timestamp from the post, add it to current_date, and use it
         # something like datetime.strptime(channel date stuff + split timestamp, '%a %b %d %Y blah blah')
         nick = Nick.get_nick(line)
         if nick:
+          # could just use score_rules here
+          # score_rules.delay(channel=channel, line=line, nick=nick)
           for rule in rules:
             score.delay(Score(rule=rule, nick=nick, channel=channel, date=channel.current_date, line_index=line_index), line=line)
       line_index += 1
       line = r.get('%s-%d' % (channel.slug, line_index))
       # print line
 
-    # Finished initial scoring channel, set it active to register with score_rules()
+    # Finished scoring channel, set it active to register with score_rules()
     channel.status = 'active'
     channel.save()
   except ObjectDoesNotExist:
