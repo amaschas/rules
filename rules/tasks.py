@@ -41,7 +41,7 @@ def score(score, line):
 
 # Called from save() on Rule, scores every line of every channel against the rule, sets rule status appropriately
 @celery.task
-def initial_rule_score(rule):
+def score_rule_from_index(rule, index=0):
   try:
     channels = Channel.objects.filter(status='active')
 
@@ -55,7 +55,7 @@ def initial_rule_score(rule):
     rule.save()
     for channel in channels:
       date = channel.start_date
-      line_index = 0
+      line_index = index
       r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
 
       # For every line in the channel, call the score task
@@ -80,11 +80,17 @@ def initial_rule_score(rule):
     log.debug('no active channels')
     pass
 
+# def test(index):
+#   testing = Score.objects.filter(channel=15, line_index__gte=index)
+#   for score in testing:
+#     print score.line_index
+
+
 # TODO use these score_from_index functions to do all scoring
 @celery.task
 def score_channel_from_index(channel, index=0):
   try:
-    Score.objects.filter(channel=channel, line_index >= index).delete()
+    Score.objects.filter(channel=channel, line_index__gte=index).delete()
     rules = Rule.objects.filter(status='active')
 
     # Channel is now scoring
@@ -97,46 +103,7 @@ def score_channel_from_index(channel, index=0):
     # For every line in the channel, call the score task
     line = r.get('%s-%d' % (channel.slug, line_index))
 
-    #TODO: channel counter gets incremented one too many times
-    while line:
-      channel.update_current_line(line_index)
-      if not channel.update_current_date(line):
-        # TODO get the timestamp from the post, add it to current_date, and use it
-        # something like datetime.strptime(channel date stuff + split timestamp, '%a %b %d %Y blah blah')
-        nick = Nick.get_nick(line)
-        if nick:
-          for rule in rules:
-            score.delay(Score(rule=rule, nick=nick, channel=channel, date=channel.current_date, line_index=line_index), line=line)
-      line_index += 1
-      line = r.get('%s-%d' % (channel.slug, line_index))
-      # print line
-
-    # Finished initial scoring channel, set it active to register with score_rules()
-    channel.status = 'active'
-    channel.save()
-  except ObjectDoesNotExist:
-    pass
-    #TODO: If there are no active rules, channel should get current_line and current_date anyway
-
-# TODO: deprecate this
-# Called from save() on Channel, scores every line of channel against every rule, sets channel status appropriately
-@celery.task
-def initial_channel_score(channel):
-  try:
-    Score.objects.filter(channel=channel).delete()
-    rules = Rule.objects.filter(status='active')
-
-    # Channel is now scoring
-    channel.status = 'scoring'
-    channel.save()
-    date = channel.start_date
-    line_index = 0
-    r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
-
-    # For every line in the channel, call the score task
-    line = r.get('%s-%d' % (channel.slug, line_index))
-
-    #TODO: channel counter gets incremented one too many times
+    #TODO: channel counter gets incremented one too many times (I think this is fixed now)
     while line:
       channel.update_current_line(line_index)
       if not channel.update_current_date(line):

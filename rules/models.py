@@ -34,8 +34,8 @@ class Rule(models.Model):
     if score or self.id == None:
       # log.debug('rule saving - will score')
       super(Rule, self).save(*args, **kwargs)
-      from tasks import initial_rule_score
-      initial_rule_score.delay(self)
+      from tasks import score_rule_from_index
+      score_rule_from_index.delay(self)
     else:
       # log.debug('rule saving - will not score')
       super(Rule, self).save(*args, **kwargs)
@@ -60,8 +60,8 @@ class Channel(models.Model):
     if score or self.id == None:
       # log.debug('rule saving - will score')
       super(Channel, self).save(*args, **kwargs)
-      from tasks import initial_channel_score
-      initial_channel_score.delay(self)
+      from tasks import score_channel_from_index
+      score_channel_from_index.delay(self)
     else:
       # log.debug('rule saving - will not score')
       super(Channel, self).save(*args, **kwargs)
