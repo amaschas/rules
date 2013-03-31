@@ -1,0 +1,19 @@
+@import "compass/reset";
+// @import "global-values";
+// @import "rules/*.png";
+
+body {
+  #rule-scores {
+    list-style-type: none;
+    li {
+      .highlight {
+        background-color: yellow;
+      }
+    }
+  }
+  form {
+  	ul {
+  		list-style-type: none;
+  	}
+  }
+}

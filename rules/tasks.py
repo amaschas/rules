@@ -28,9 +28,10 @@ def score_rules(channel, line, nick):
 # Receives a rule, line and channel slug, calls score on the rule instance with the parameters
 @celery.task
 def score(score, line):
-  log.debug('testing line %d - %s' % (score.line_index, line))
+  # log.debug('testing line %d - %s' % (score.line_index, line))
   matches = len(re.findall(score.rule.rule, line))
   if matches:
+    print '%d - %s' % (matches, line)
     score.score = matches
     score.save()
     return True
@@ -108,7 +109,7 @@ def initial_channel_score(channel):
             score.delay(Score(rule=rule, nick=nick, channel=channel, date=channel.current_date, line_index=line_index), line=line)
       line_index += 1
       line = r.get('%s-%d' % (channel.slug, line_index))
-      print line
+      # print line
 
     # Finished initial scoring channel, set it active to register with score_rules()
     channel.status = 'active'

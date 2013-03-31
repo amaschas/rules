@@ -4,6 +4,7 @@ from django.shortcuts import render_to_response, get_object_or_404
 from django.contrib.auth.models import User
 from django.views.generic.base import TemplateView, View
 from django.http import HttpResponse, HttpResponseRedirect, Http404
+from django.db.models import Sum, Count
 
 # from django.utils import simplejson
 
@@ -70,14 +71,17 @@ class RuleView(RulesView):
 
   def BuildContext(self, request, args, kwargs):
     rule = Rule.objects.get(id=kwargs['rule_id'])
-    return {'rule' : rule}
+    score = Score.objects.filter(rule=kwargs['rule_id']).aggregate(Sum('score'))
+    count = Score.objects.filter(rule=kwargs['rule_id']).count()
+    print score
+    return {'rule' : rule, 'score' : score['score__sum'], 'count' : count }
 
 
 class RuleScoresView(View):
   def get(self, request, *args, **kwargs):
     # data = serializers.serialize('json', Score.objects.filter(rule=kwargs['rule_id']).order_by('date')[:10])
     data = []
-    for score in Score.objects.filter(rule=kwargs['rule_id']).order_by('date')[:50]:
+    for score in Score.objects.filter(rule=kwargs['rule_id']).order_by('date')[:100]:
       rule = Rule.objects.get(id=score.rule.id)
       line = score.line()
       # print line
@@ -140,7 +144,7 @@ class ScoreView(APIView):
       channel = Channel.objects.get(slug=request.DATA['channel'])
       r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
 
-      #TODO should check if channel is active, ignore if it is
+      #TODO should check if channel is active, ignore if it isn't
 
       # Get the next line
       next_line_index = channel.current_line + 1
