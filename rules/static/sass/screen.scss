@@ -3,17 +3,46 @@
 // @import "rules/*.png";
 
 body {
-  #rule-scores {
-    list-style-type: none;
-    li {
-      .highlight {
-        background-color: yellow;
-      }
-    }
-  }
-  form {
-  	ul {
-  		list-style-type: none;
-  	}
-  }
+	header, footer {
+		padding: 5px 25px 5px 25px;
+		background-color: #999;
+		h1 {
+			float: left;
+			margin: 0px 20px 0px 0px;
+		}
+		#nav {
+			list-style-type: none;
+			li {
+				display: inline-block;
+				margin: 0px 10px 0px 0px;
+				a, a:visited {
+					text-decoration: none;
+					color: #fff;
+				}
+			}
+		}
+	}
+	#content {
+		margin: 25px 25px 25px 25px;
+		#rule-meta {
+			margin: 0px 0px 20px 0px;
+			strong {
+				font-weight: bold;
+			}
+		}
+	  #rule-scores {
+	    list-style-type: none;
+	    li {
+	    	margin: 0px 0px 5px 0px;
+	      .highlight {
+	        background-color: yellow;
+	      }
+	    }
+	  }
+	  form {
+	  	ul {
+	  		list-style-type: none;
+	  	}
+	  }
+	}
 }

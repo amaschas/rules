@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 {% block html_title %}Rule: {{ rule.name }}{% endblock html_title %}
 {% block content %}
-<h2>Rule: {{ rule.name }}</h2>
-<p><strong>Rule regex: </strong>{{ rule.rule }}</p>
-<p><strong>Rule score: </strong>{{ score }}</p>
-<p><strong>Line count: </strong>{{ count }}</p>
+<div id="rule-meta">
+	<h2>Rule: {{ rule.name }}</h2>
+	<p><strong>Rule regex: </strong>{{ rule.rule }}</p>
+	<p><strong>Rule score: </strong>{{ score }}</p>
+	<p><strong>Line count: </strong>{{ count }}</p>
+</div>
 <ul id="rule-scores" data-rule-id="{{ rule.id }}"></ul>
 {% endblock content %}

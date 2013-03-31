@@ -8,6 +8,25 @@
 	<script type="text/javascript" src="{{ STATIC_URL }}js/global.js"></script>
 </head>
 <body>
-	{% block content %}{% endblock content %}
+	<header>
+		{% block header %}
+		<h1>rule.sine.com</h1>
+		<ul id="nav">
+			<li><a href="">rules</a></li>
+			<li><a href="">claim nick</a></li>
+		</ul>
+		{% endblock header %}
+	</header>
+	<div id="content">
+		{% block content %}{% endblock content %}
+	</div>
+	<footer>
+		{% block footer %}
+		<ul id="nav">
+			<li><a href="">rules</a></li>
+			<li><a href="">claim nick</a></li>
+		</ul>
+		{% endblock footer %}
+	</footer>
 </body>
 </html>

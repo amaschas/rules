@@ -79,14 +79,11 @@ class RuleView(RulesView):
 
 class RuleScoresView(View):
   def get(self, request, *args, **kwargs):
-    # data = serializers.serialize('json', Score.objects.filter(rule=kwargs['rule_id']).order_by('date')[:10])
     data = []
-    for score in Score.objects.filter(rule=kwargs['rule_id']).order_by('date')[:100]:
+    limit = 100
+    for score in Score.objects.filter(rule=kwargs['rule_id']).order_by('date')[:limit]:
       rule = Rule.objects.get(id=score.rule.id)
       line = score.line()
-      # print line
-      # match = re.search(rule.rule, line[8:])
-      # print match.group(0)
       data.append({'nick' : score.nick.name, 'line' : line, 'rule' : rule.rule})
       json_data = json.dumps(data)
     return HttpResponse(json_data, mimetype='application/json')
@@ -144,7 +141,8 @@ class ScoreView(APIView):
       channel = Channel.objects.get(slug=request.DATA['channel'])
       r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
 
-      #TODO should check if channel is active, ignore if it isn't
+      # TODO should check if channel is active, ignore if it isn't
+      # TODO this should score all unscored lines, set channel status to scoring while doing so to avoid duplicate lines
 
       # Get the next line
       next_line_index = channel.current_line + 1

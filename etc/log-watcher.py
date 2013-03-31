@@ -2,7 +2,7 @@
 
 import os, sys, time, re, json, redis, argparse
 from collections import deque
-from httplib2 import Http
+from httplib2 import Http, InvalidURL, ServerNotFoundError
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler 
 
@@ -50,9 +50,13 @@ class LogUpdateHandler(FileSystemEventHandler):
 
   # Makes an API request to the Django app that starts the scoring process
   def score(self):
-    h = Http()
-    resp, content = h.request('http://%s' % args.api_url, "POST", json.dumps({'channel' : args.channel_name}), headers={'content-type':'application/json'})
-
+    try:
+      h = Http()
+      resp, content = h.request('http://%s' % args.api_url, "POST", json.dumps({'channel' : args.channel_name}), headers={'content-type':'application/json'})
+    except InvalidURL:
+      print '%s is an invalid URL' % args.api_url
+    except ServerNotFoundError:
+      print '%s did not respond' % args.api_url
     #not sure if we need:
     # h.add_certificate('serverkey.pem', 'servercert.pem', '')
 
