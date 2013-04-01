@@ -8,6 +8,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import post_save
 from django.db import IntegrityError
 
+import tasks
+from lock import unlock
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -22,12 +25,14 @@ class StatusHandler(models.Model):
         abstract = True
 
   def set_active(self):
-    self.status = 'active';
-    self.save()
+    if self.status != 'active':
+      self.status = 'active';
+      self.save()
 
   def set_scoring(self):
-    self.status = 'scoring'
-    self.save()
+    if self.status != 'scoring':
+      self.status = 'scoring'
+      self.save()
 
 class Rule(StatusHandler):
   creator = models.ForeignKey(User)
@@ -36,18 +41,12 @@ class Rule(StatusHandler):
   def __unicode__(self):
       return self.name
 
-  # TODO might be able to get rid of the score arg
-  def save(self, score=False, *args, **kwargs):
-    # log.debug('rule save started')
-    # log.debug(self.id)
-    # log.debug(score)
-    if score or self.id == None:
-      # log.debug('rule saving - will score')
+  # TODO I want to stick this in StatusHandler, but importing tasks is weird
+  def save(self, *args, **kwargs):
+    if self.id == None:
       super(Rule, self).save(*args, **kwargs)
-      from tasks import score_rule_from_index
-      score_rule_from_index.delay(self)
+      tasks.score_rule_from_index.delay(self)
     else:
-      # log.debug('rule saving - will not score')
       super(Rule, self).save(*args, **kwargs)
 
 
@@ -61,18 +60,13 @@ class Channel(StatusHandler):
   def __unicode__(self):
       return self.title
 
-  # TODO might be able to get rid of the score arg
-  def save(self, score=False, *args, **kwargs):
-    # log.debug('rule save started')
-    # log.debug(self.id)
-    # log.debug(score)
-    if score or self.id == None:
-      # log.debug('rule saving - will score')
+  # TODO I want to stick this in StatusHandler, but importing tasks is weird
+  def save(self, *args, **kwargs):
+    if self.id == None:
+      self.current_date = self.start_date
       super(Channel, self).save(*args, **kwargs)
-      from tasks import score_channel_from_index
-      score_channel_from_index.delay(self)
+      tasks.score_channel_from_index.delay(self)
     else:
-      # log.debug('rule saving - will not score')
       super(Channel, self).save(*args, **kwargs)
 
   # Gets a line, checks for a date line, returns the formatted date or false otherwise
@@ -84,31 +78,43 @@ class Channel(StatusHandler):
       return False
 
   # Gets a line number, updates self.current_line if the value is an integer
-  def update_current_line(self, line_number):
-    try:
-      self.current_line = line_number
-      self.save()
-      return True
-    except ValueError:
-      return False
+  def set_current_line(self, line_number):
+    self.current_line = line_number
+    self.save()
 
-  # Gets a line, checks for a date with format_date_line(), updates self.current_date if it finds a date
-  def update_current_date(self, line, *args, **kwargs):
-    date = Channel.format_date_line(line)
-    if date:
-      self.current_date = date
-      self.save()
-      return True
+  def set_current_date(self, date):
+    self.current_date = date
+    self.save()
+
+  def reset(self):
+    self.set_current_line(0)
+    self.set_current_date(self.start_date)
+
+  def update(self, line_index):
+    line = Score.get_line(self, line_index)
+    if line:
+      if line_index <= self.current_line:
+        pass
+      else:
+        self.set_current_line(line_index)
+        date = Channel.format_date_line(line)
+        if date:
+          self.set_current_date(date)
+        else:
+          tasks.score_rules.delay(channel=self, line_index=self.current_line, date=self.current_date, line=line)
+      self.update(line_index + 1)
     else:
-      #TODO if the line has a timestamp, add the time to the current date
-      return False
+      pass
+      # Unlock the channel for scoring when there are no more lines to score
+      # unlock('%s-scoring' % self.slug)
+    return
 
 
 class Nick(models.Model):
   user = models.ForeignKey(User, blank=True, null=True)
   name = models.CharField(max_length=100, unique=True)
   def __unicode__(self):
-      return self.name
+    return self.name
 
   # Gets or creates a nick object from a line
   @staticmethod

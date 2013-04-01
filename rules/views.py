@@ -21,7 +21,6 @@ from rest_framework.decorators import api_view
 from models import *
 from forms import *
 from tasks import *
-from tasks import score_rules
 
 class RulesView(TemplateView):
   def BuildContext(self, request, args, kwargs):
@@ -57,12 +56,13 @@ class TestView(RulesView):
         print 'scoring channels'
         channels = Channel.objects.all()
         for channel in channels:
-          score_channel_from_index.delay(channel)
+          channel.reset()
+          score_channel_from_index.delay(channel, 0)
       if 'score-rules' in options:
         print 'scoring rules'
         rules = Rule.objects.all()
         for rule in rules:
-          score_rule_from_index.delay(rule)
+          score_rule_from_index.delay(rule, 0)
     return {'form' : form}
 
 
@@ -136,34 +136,10 @@ class ChannelCreateView(CreateView):
 # Receives a score request for a channel, gets the next line, starts the scoring process
 class ScoreView(APIView):
   def post(self, request):
-    print request.DATA
+    # print request.DATA
     try:
       channel = Channel.objects.get(slug=request.DATA['channel'])
-      r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
-
-      # TODO should check if channel is active, ignore if it isn't
-      # TODO this should score all unscored lines, set channel status to scoring while doing so to avoid duplicate lines
-
-      # Get the next line
-      next_line_index = channel.current_line + 1
-      next_line = r.get('%s-%d' % (channel.slug, next_line_index))
-      print next_line_index
-      print next_line
-      # next_line = r.get('avara-2523')
-      if next_line:
-
-        # Update the line here, so rule.score() can get the updated line from the channel
-        channel.update_current_line(next_line_index)
-        # This isn't necessary
-        # channel.save()
-
-        # If update_current_date returns false, line is not a date, score it
-        if not channel.update_current_date(next_line):
-
-          # If we can find a nick in the line, score it
-          nick = Nick.get_nick(next_line)
-          if nick:
-            score_rules.delay(channel=channel, line=next_line, nick=nick)
+      score_channel_from_index.delay(channel, channel.current_line)
+      return HttpResponse(status=201)
     except ObjectDoesNotExist:
-      pass
-    return HttpResponse(status=201)
+      return HttpResponse(status=404)
