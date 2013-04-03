@@ -16,6 +16,7 @@ celery = Celery('rules', backend='redis://localhost', broker='amqp://guest:guest
 # Compiles a task group for all active rules, executes the group
 @celery.task
 def score_rules(channel, line_index, nick, date, line):
+  return
   try:
     rules = models.Rule.objects.filter(status='active')
     g = group(score.s(models.Score(rule=rule, nick=nick, channel=channel, date=date, line_index=line_index), line=line) for rule in rules)

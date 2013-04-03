@@ -8,6 +8,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import post_save
 from django.db import IntegrityError
 
+from celery import Celery
+
+celery = Celery('rules', backend='redis://localhost', broker='amqp://guest:guest@localhost:5672//')
+
 import tasks
 from lock import acquire_lock, release_lock
 
@@ -94,6 +98,7 @@ class Channel(StatusHandler):
     self.set_current_line(0)
     self.set_current_date(self.start_date)
 
+  @celery.task
   def update(self, line_index):
     # TODO update generated uuid, locks with that uuid, passes it recursively, so only updates in that recursion can use it
     identifier=str(uuid.uuid4())
@@ -122,24 +127,6 @@ class Channel(StatusHandler):
       release_lock('%s-scoring' % self.slug, identifier)
     else:
       print 'update locked'
-
-    #   if line:
-    #     if line_index <= self.current_line:
-    #       pass
-    #     else:
-    #       self.set_current_line(line_index)
-    #       date = Channel.format_date_line(line)
-    #       if date:
-    #         self.set_current_date(date)
-    #       else:
-    #         tasks.score_rules.delay(channel=self, line_index=self.current_line, date=self.current_date, line=line)
-    #     self.update(line_index + 1, identifier)
-    #   else:
-    #     # Unlock the channel for scoring when there are no more lines to score
-    #     release_lock('%s-scoring' % self.slug, identifier)
-    # else:
-    #   print 'update locked'
-    # return
 
 
 class Nick(models.Model):
