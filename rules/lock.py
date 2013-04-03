@@ -2,6 +2,8 @@ import redis, time, contextlib
 
 REDIS_CLIENT = redis.Redis(host='localhost', port=6379, db=0)
 
+# Got this here: http://dr-josiah.blogspot.com/2012/01/creating-lock-with-redis.html
+
 def acquire_lock(lockname, identifier, ltime=60):
   # print identifier
   print 'locking'

@@ -61,12 +61,12 @@ class TestView(RulesView):
         channels = Channel.objects.all()
         for channel in channels:
           # score_channel_from_index.delay(channel, 0)
-          channel.update.delay(channel, 0)
+          update_channel.delay(channel, 0)
       if 'score-rules' in options:
         print 'scoring rules'
         rules = Rule.objects.all()
         for rule in rules:
-          score_rule_from_index.delay(rule, 0)
+          update_rule.delay(rule, 0)
     return {'form' : form}
 
 
