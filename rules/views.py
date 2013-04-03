@@ -52,11 +52,14 @@ class TestView(RulesView):
       if 'delete-scores' in options:
         print 'deleting scores'
         Score.objects.all().delete()
+      if 'reset-channels' in options:
+        channels = Channel.objects.all()
+        for channel in channels:
+          channel.reset()
       if 'score-channels' in options:
         print 'scoring channels'
         channels = Channel.objects.all()
         for channel in channels:
-          channel.reset()
           score_channel_from_index.delay(channel, 0)
       if 'score-rules' in options:
         print 'scoring rules'

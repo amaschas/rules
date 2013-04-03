@@ -5,7 +5,6 @@ from celery import group
 from django.core.exceptions import ObjectDoesNotExist
 
 import models
-from lock import lock
 
 import logging
 log = logging.getLogger(__name__)
@@ -16,13 +15,11 @@ celery = Celery('rules', backend='redis://localhost', broker='amqp://guest:guest
 
 # Compiles a task group for all active rules, executes the group
 @celery.task
-def score_rules(channel, line_index, date, line):
+def score_rules(channel, line_index, nick, date, line):
   try:
     rules = models.Rule.objects.filter(status='active')
-    nick = models.Nick.get_nick(line)
-    if nick:
-      g = group(score.s(models.Score(rule=rule, nick=nick, channel=channel, date=date, line_index=line_index), line=line) for rule in rules)
-      g.apply_async()
+    g = group(score.s(models.Score(rule=rule, nick=nick, channel=channel, date=date, line_index=line_index), line=line) for rule in rules)
+    g.apply_async()
   except ObjectDoesNotExist:
     pass
 
@@ -33,7 +30,7 @@ def score(score, line):
   # log.debug('testing line %d - %s' % (score.line_index, line))
   matches = len(re.findall(score.rule.rule, line))
   if matches:
-    print '%d - %s' % (matches, line)
+    # print '%d - %s' % (matches, line)
     score.score = matches
     score.save()
     return True
@@ -88,7 +85,4 @@ def score_rule_from_index(rule, index=0):
 # Scores the channel against every active rule, starting at index
 @celery.task
 def score_channel_from_index(channel, index=0):
-  if lock('%s-scoring' % channel.slug):
-    channel.update(index)
-  else:
-    pass
+  channel.update(index)

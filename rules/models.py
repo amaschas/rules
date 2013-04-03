@@ -1,4 +1,4 @@
-import re, time, redis
+import re, time, redis, uuid
 from datetime import datetime
 from django.db import models
 from django.contrib.auth.models import User
@@ -9,7 +9,7 @@ from django.db.models.signals import post_save
 from django.db import IntegrityError
 
 import tasks
-from lock import unlock
+from lock import acquire_lock, release_lock
 
 import logging
 log = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ class Rule(StatusHandler):
       return self.name
 
   # TODO I want to stick this in StatusHandler, but importing tasks is weird
+  # figured out importing tasks, I can probably fix this now, though it is probably moot
   def save(self, *args, **kwargs):
     if self.id == None:
       super(Rule, self).save(*args, **kwargs)
@@ -49,11 +50,14 @@ class Rule(StatusHandler):
     else:
       super(Rule, self).save(*args, **kwargs)
 
+  # TODO update rule method
+
 
 class Channel(StatusHandler):
   title = models.CharField(max_length=100)
   slug = models.CharField(max_length=20, unique=True)
   redis_db = models.IntegerField(default=0)
+  # Maybe make these redis data?
   current_line = models.IntegerField(default=0)
   start_date = models.DateTimeField(blank=True, null=True)
   current_date = models.DateTimeField(blank=True, null=True)
@@ -91,23 +95,51 @@ class Channel(StatusHandler):
     self.set_current_date(self.start_date)
 
   def update(self, line_index):
-    line = Score.get_line(self, line_index)
-    if line:
-      if line_index <= self.current_line:
-        pass
-      else:
-        self.set_current_line(line_index)
-        date = Channel.format_date_line(line)
-        if date:
-          self.set_current_date(date)
+    # TODO update generated uuid, locks with that uuid, passes it recursively, so only updates in that recursion can use it
+    identifier=str(uuid.uuid4())
+    print identifier
+    test = acquire_lock('%s-scoring' % self.slug, identifier)
+    print test
+    if test == identifier:
+      line = Score.get_line(self, line_index)
+
+      while line:
+        if line_index <= self.current_line:
+          pass
         else:
-          tasks.score_rules.delay(channel=self, line_index=self.current_line, date=self.current_date, line=line)
-      self.update(line_index + 1)
+          self.set_current_line(line_index)
+          date = Channel.format_date_line(line)
+          if date:
+            self.set_current_date(date)
+          else:
+            nick = Nick.get_nick(line)
+            if nick:
+              tasks.score_rules.delay(channel=self, line_index=self.current_line, nick=nick, date=self.current_date, line=line)
+
+        line_index = self.current_line + 1
+        line = Score.get_line(self, line_index)
+
+      release_lock('%s-scoring' % self.slug, identifier)
     else:
-      pass
-      # Unlock the channel for scoring when there are no more lines to score
-      # unlock('%s-scoring' % self.slug)
-    return
+      print 'update locked'
+
+    #   if line:
+    #     if line_index <= self.current_line:
+    #       pass
+    #     else:
+    #       self.set_current_line(line_index)
+    #       date = Channel.format_date_line(line)
+    #       if date:
+    #         self.set_current_date(date)
+    #       else:
+    #         tasks.score_rules.delay(channel=self, line_index=self.current_line, date=self.current_date, line=line)
+    #     self.update(line_index + 1, identifier)
+    #   else:
+    #     # Unlock the channel for scoring when there are no more lines to score
+    #     release_lock('%s-scoring' % self.slug, identifier)
+    # else:
+    #   print 'update locked'
+    # return
 
 
 class Nick(models.Model):

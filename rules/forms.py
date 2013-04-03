@@ -10,6 +10,7 @@ class TestForm(forms.Form):
     ('delete-rules', 'Delete all rules'),
     ('delete-nicks', 'Delete all nicks'),
     ('delete-scores', 'Delete all scores'),
+    ('reset-channels', 'Reset channels'),
     ('score-channels', 'Initial score channels'),
     ('score-rules', 'Initial score rules'),
   )
