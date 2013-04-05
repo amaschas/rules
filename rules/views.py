@@ -22,6 +22,11 @@ from models import *
 from forms import *
 from tasks import *
 
+#TODO:
+  # Nick choosing
+  # User page (see user rules and maybe scores?)
+  # Home page, top 25 rules and scores per user
+
 class RulesView(TemplateView):
   def BuildContext(self, request, args, kwargs):
     return
@@ -60,7 +65,6 @@ class TestView(RulesView):
         print 'scoring channels'
         channels = Channel.objects.all()
         for channel in channels:
-          # score_channel_from_index.delay(channel, 0)
           update_channel.delay(channel, 0)
       if 'score-rules' in options:
         print 'scoring rules'
@@ -77,7 +81,6 @@ class RuleView(RulesView):
     rule = Rule.objects.get(id=kwargs['rule_id'])
     score = Score.objects.filter(rule=kwargs['rule_id']).aggregate(Sum('score'))
     count = Score.objects.filter(rule=kwargs['rule_id']).count()
-    print score
     return {'rule' : rule, 'score' : score['score__sum'], 'count' : count }
 
 
@@ -134,16 +137,13 @@ class ChannelCreateView(CreateView):
   #   return initial
 
 
-# TODO view that shows a single Score (basically the line with the regex match highlighted)
-# takes a Score object as an arg - test scoring can just send an unsaved instance - need to release instance afterwards?
-
 # Receives a score request for a channel, gets the next line, starts the scoring process
 class ScoreView(APIView):
   def post(self, request):
     # print request.DATA
     try:
       channel = Channel.objects.get(slug=request.DATA['channel'])
-      score_channel_from_index.delay(channel, channel.current_line)
+      update_channel.delay(channel, channel.current_line)
       return HttpResponse(status=201)
     except ObjectDoesNotExist:
       return HttpResponse(status=404)

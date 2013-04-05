@@ -59,9 +59,11 @@ def update_channel(channel, line_index):
   else:
     print 'update locked'
 
-# Might be better to avoid the monkey patch, use the displatcher response method for the signal
-# allows me to segment the code for triggering only on initial save, while also letting me pass index more easily, probably
-# post_save.connect(update_channel.delay, sender=Channel)
+# Using a receiver function here instead of directly calling update_channel so update_channel can remain generalized
+@receiver(post_save, sender=Channel)
+def update_channel_save_trigger(sender, **kwargs):
+  if kwargs['created']:
+    update_channel.delay(channel=kwargs['instance'], index=0)
 
 
 # Scores the rule against every active channel, starting at index
@@ -95,3 +97,9 @@ def update_rule(rule, index=0):
     release_lock('rule-%s-scoring' % rule.id, identifier)
   else:
     print 'update locked'
+
+# Using a receiver function here instead of directly calling update_rule so update_rule can remain generalized
+@receiver(post_save, sender=Rule)
+def update_rule_save_trigger(sender, **kwargs):
+  if kwargs['created']:
+    update_rule.delay(channel=kwargs['instance'], index=0)
