@@ -11,47 +11,15 @@ from django.db import IntegrityError
 import logging
 log = logging.getLogger(__name__)
 
-class StatusHandler(models.Model):
-  STATUSES = (
-    ('active', 'Active'),
-    ('scoring', 'Scoring'),
-    ('new', 'New')
-  )
-  status = models.CharField(choices=STATUSES, max_length=20, default='new')
-  class Meta:
-        abstract = True
-
-  def set_active(self):
-    if self.status != 'active':
-      self.status = 'active';
-      self.save()
-
-  def set_scoring(self):
-    if self.status != 'scoring':
-      self.status = 'scoring'
-      self.save()
-
-class Rule(StatusHandler):
+class Rule(models.Model):
   creator = models.ForeignKey(User)
   name = models.CharField(max_length=100)
   rule = models.CharField(max_length=100)
   def __unicode__(self):
       return self.name
 
-  # TODO I want to stick this in StatusHandler, but importing tasks is weird
-  # figured out importing tasks, I can probably fix this now, though it is probably moot
-  def save(self, *args, **kwargs):
-    if self.id == None:
-      super(Rule, self).save(*args, **kwargs)
-      #TODO this needs tasks to be imported
-      update_rule.delay(self)
-    else:
-      super(Rule, self).save(*args, **kwargs)
 
-  # TODO update rule method
-
-
-class Channel(StatusHandler):
+class Channel(models.Model):
   title = models.CharField(max_length=100)
   slug = models.CharField(max_length=20, unique=True)
   redis_db = models.IntegerField(default=0)
@@ -61,17 +29,6 @@ class Channel(StatusHandler):
   current_date = models.DateTimeField(blank=True, null=True)
   def __unicode__(self):
       return self.title
-
-  # TODO I want to stick this in StatusHandler, but importing tasks is weird
-  def save(self, *args, **kwargs):
-    if self.id == None:
-      self.current_date = self.start_date
-      super(Channel, self).save(*args, **kwargs)
-      #TODO this needs tasks to be imported
-      #might be able to do this with a signal
-      update_channel.delay(self)
-    else:
-      super(Channel, self).save(*args, **kwargs)
 
   # Gets a line, checks for a date line, returns the formatted date or false otherwise
   @staticmethod
@@ -94,7 +51,8 @@ class Channel(StatusHandler):
     self.set_current_line(0)
     self.set_current_date(self.start_date)
 
-
+# TODO: track whether nicks are active (true on join or nick change or first seen, false on part or nick change)
+# once we're tracking whether nicks are active, we can score lines read per nick
 class Nick(models.Model):
   user = models.ForeignKey(User, blank=True, null=True)
   name = models.CharField(max_length=100, unique=True)
