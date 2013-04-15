@@ -230,3 +230,10 @@ LOGGING = {
         },
     }
 }
+
+try:
+    # HOSTNAME = socket.gethostname()
+    # if HOSTNAME == 'expressgive.com' or HOSTNAME == 'trackstatedollars.com':
+    from local_settings import *
+except ImportError:
+    pass
