@@ -1,6 +1,6 @@
 # nginx config for rules.sine.com
 server {
-    listen   8001;
+    listen   80;
     server_name rules.sine.com;
     # no security problem here, since / is always passed to upstream
     root /usr/local/django/rules/rules;
@@ -31,7 +31,7 @@ server {
         proxy_read_timeout 10;
         proxy_hide_header Vary;
         add_header Vary User-Agent;
-        proxy_pass http://localhost:8001/;
+        proxy_pass http://localhost:8000/;
     }
     # what to serve if upstream is not available or crashes
     error_page 500 502 503 504 /media/50x.html;
