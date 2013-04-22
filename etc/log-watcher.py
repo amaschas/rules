@@ -71,14 +71,14 @@ class LogUpdateHandler(FileSystemEventHandler):
 
     # For each line in the file, insert into redis, keyed by the channel name and line number
     for line in self.file:
-      if self.redis_index % 1000 == 0:
+      if self.redis_index % 1000 == 0 and args.verbose:
         os.system('clear')
         print 'Current index: %s' % self.redis_index
       if not args.overwrite and self.r.get('%s-%s' % (args.channel_name, self.redis_index)):
         pass
       else:
-        if args.verbose:
-          print '%s-%s: %s' % (args.channel_name, self.redis_index, line.strip())
+        # if args.verbose:
+        #   print '%s-%s: %s' % (args.channel_name, self.redis_index, line.strip())
         self.r.set('%s-%s' % (args.channel_name, self.redis_index), line.strip())
       self.redis_index += 1
 
@@ -108,6 +108,7 @@ if __name__ == "__main__":
   # parser.add_argument('-p', '--password', help="Password for the client API target")
   args = parser.parse_args()
 
+  sys.setrecursionlimit(10000)
   args.path = os.path.normpath(args.path) + os.sep
   if not os.path.isdir(args.path):
     raise ValueError("Invalid Path")
