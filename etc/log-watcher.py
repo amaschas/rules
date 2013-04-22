@@ -71,6 +71,9 @@ class LogUpdateHandler(FileSystemEventHandler):
 
     # For each line in the file, insert into redis, keyed by the channel name and line number
     for line in self.file:
+      if self.redis_index % 1000 == 0:
+        os.system('clear')
+        print 'Current index: %s' % self.redis_index
       if not args.overwrite and self.r.get('%s-%s' % (args.channel_name, self.redis_index)):
         pass
       else:
