@@ -3,7 +3,7 @@ server {
     listen   8001;
     server_name rules.sine.com;
     # no security problem here, since / is always passed to upstream
-    root /usr/share/django/rules/rules;
+    root /usr/local/django/rules/rules;
     # serve directly - analogous for static/staticfiles
     location /media/ {
         # if asset versioning is used
@@ -19,7 +19,7 @@ server {
     }
     location /admin/media/ {
         # this changes depending on your python version
-        root /usr/share/django/rules/lib/python2.7/site-packages/django/contrib;
+        root /usr/local/django/rules/lib/python2.7/site-packages/django/contrib;
     }
     location / {
         proxy_pass_header Server;
