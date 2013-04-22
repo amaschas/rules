@@ -66,7 +66,14 @@ class TestView(RulesView):
         rules = Rule.objects.filter()
         g = group(update_rule.s(rule=rule) for rule in rules)
         g.apply_async()
+        # import cProfile
+        # cProfile.runctx('tester()', globals(), locals())
     return {'form' : form}
+
+# def tester():
+#   rules = Rule.objects.filter()
+#   g = group(update_rule.s(rule=rule) for rule in rules)
+#   g.apply_async()
 
 
 class RuleView(RulesView):
