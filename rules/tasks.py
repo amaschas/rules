@@ -27,76 +27,51 @@ def score(score, line):
   else:
     return False
 
-# TODO: can line_index be in kwargs?
-@celery.task
-def update_channel(channel, line_index):
-  identifier=str(uuid.uuid4())
-  if acquire_lock('%s-scoring' % channel.slug, identifier) == identifier:
-    line = Score.get_line(channel, line_index)
-
-    while line:
-      if line_index <= channel.current_line:
-        pass
-      else:
-        channel.set_current_line(line_index)
-        date = Channel.format_date_line(line)
-        if date:
-          channel.set_current_date(date)
-        else:
-          nick = Nick.get_nick(line)
-          if nick:
-            try:
-              rules = Rule.objects.filter(status='active')
-              g = group(score.s(Score(rule=rule, nick=nick, channel=channel, date=channel.current_date, line_index=channel.current_line), line=line) for rule in rules)
-              g.apply_async()
-            except ObjectDoesNotExist:
-              pass
-
-      line_index = channel.current_line + 1
-      line = Score.get_line(channel, line_index)
-
-    release_lock('%s-scoring' % channel.slug, identifier)
-  else:
-    print 'update locked'
 
 # Using a receiver function here instead of directly calling update_channel so update_channel can remain generalized
 @receiver(post_save, sender=Channel)
 def update_channel_save_trigger(sender, **kwargs):
   if kwargs['created']:
-    update_channel.delay(channel=kwargs['instance'], index=0)
+    try:
+      rules = Rule.objects.filter()
+      g = group(update_rule.s(rule=rule) for rule in rules)
+      g.apply_async()
+    except ObjectDoesNotExist:
+      pass
 
 
 # Scores the rule against every active channel, starting at index
 @celery.task
-def update_rule(rule, index=0):
+def update_rule(rule):
+  print 'starting score'
   identifier=str(uuid.uuid4())
-  if acquire_lock('rule-%s-scoring' % rule.id, identifier) == identifier:
+  if acquire_lock('rule-%s-scoring' % rule.id, identifier, 60) == identifier:
     try:
-      channels = Channel.objects.filter(status='active')
-
-      # Delete all previous scores for this rule from index on
-      Score.objects.filter(rule=rule, line_index__gte=index).delete()
-
+      channels = Channel.objects.filter()
       for channel in channels:
-        date = channel.start_date
-        line_index = index
-
-        line = Score.get_line(channel, line_index)
+        try:
+          score_meta = ScoreMeta.objects.get(rule=rule, channel=channel)
+        except ObjectDoesNotExist:
+          score_meta = ScoreMeta(rule=rule, channel=channel, line_index=0, date=channel.start_date)
+          score_meta.save()
+        line = Score.get_line(channel, score_meta.line_index)
         while line:
-          line_date = Channel.format_date_line(line)
+          line_date = ScoreMeta.format_date_line(line)
           if line_date:
-            date = line_date
+            score_meta.set_date(line_date)
           else:
             nick = Nick.get_nick(line)
             if nick:
-              score.delay(Score(rule=rule, nick=nick, channel=channel, date=date, line_index=line_index), line=line)
-          line_index += 1
-          line = Score.get_line(channel, line_index)
+              score.delay(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=score_meta.line_index), line=line)
+          score_meta.increment_line_index()
+          line = Score.get_line(channel, score_meta.line_index)
     except ObjectDoesNotExist:
       pass
+    print 'ending score'
     release_lock('rule-%s-scoring' % rule.id, identifier)
   else:
-    print 'update locked'
+    print '%s update locked' % rule.name
+
 
 # Using a receiver function here instead of directly calling update_rule so update_rule can remain generalized
 @receiver(post_save, sender=Rule)

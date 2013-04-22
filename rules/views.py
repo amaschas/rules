@@ -57,20 +57,15 @@ class TestView(RulesView):
       if 'delete-scores' in options:
         print 'deleting scores'
         Score.objects.all().delete()
-      if 'reset-channels' in options:
-        channels = Channel.objects.all()
-        for channel in channels:
-          channel.reset()
+      if 'reset-score-meta' in options:
+        ScoreMeta.objects.all().delete()
       if 'score-channels' in options:
-        print 'scoring channels'
-        channels = Channel.objects.all()
-        for channel in channels:
-          update_channel.delay(channel, 0)
+        pass
       if 'score-rules' in options:
         print 'scoring rules'
-        rules = Rule.objects.all()
-        for rule in rules:
-          update_rule.delay(rule, 0)
+        rules = Rule.objects.filter()
+        g = group(update_rule.s(rule=rule) for rule in rules)
+        g.apply_async()
     return {'form' : form}
 
 

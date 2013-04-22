@@ -8,6 +8,8 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import post_save
 from django.db import IntegrityError
 
+from lock import acquire_lock, release_lock
+
 import logging
 log = logging.getLogger(__name__)
 
@@ -22,34 +24,12 @@ class Rule(models.Model):
 class Channel(models.Model):
   title = models.CharField(max_length=100)
   slug = models.CharField(max_length=20, unique=True)
-  redis_db = models.IntegerField(default=0)
+  redis_db = models.IntegerField(default=1)
   # Maybe make these redis data?
-  current_line = models.IntegerField(default=0)
   start_date = models.DateTimeField(blank=True, null=True)
-  current_date = models.DateTimeField(blank=True, null=True)
   def __unicode__(self):
       return self.title
 
-  # Gets a line, checks for a date line, returns the formatted date or false otherwise
-  @staticmethod
-  def format_date_line(line):
-    if re.match('\[00:00\] --- ', line):
-      return datetime.strptime(line[12:], '%a %b %d %Y')
-    else:
-      return False
-
-  # Gets a line number, updates self.current_line if the value is an integer
-  def set_current_line(self, line_number):
-    self.current_line = line_number
-    self.save()
-
-  def set_current_date(self, date):
-    self.current_date = date
-    self.save()
-
-  def reset(self):
-    self.set_current_line(0)
-    self.set_current_date(self.start_date)
 
 # TODO: track whether nicks are active (true on join or nick change or first seen, false on part or nick change)
 # once we're tracking whether nicks are active, we can score lines read per nick
@@ -90,16 +70,26 @@ class Nick(models.Model):
 
     # If nick string exists, either create or return existing, otherwise return False
     if nick_string:
+      identifier=str(uuid.uuid4())
+      while acquire_lock('nick-%s-scoring' % nick_string, identifier, 5) != identifier:
+        pass
+        # log.info('trying nick %s' % nick_string)
+        # time.sleep(1)
       try:
         nick = Nick.objects.get(name=nick_string)
         # log.info('nick exists, getting: %s', nick.name)
       except ObjectDoesNotExist:
         nick = Nick(name=nick_string)
-        nick.save()
-        # log.info('adding nick: %s', nick.name)
+        try:
+          nick.save()
+          # log.info('adding nick: %s', nick.name)
+        except IntegrityError:
+          log.info('duplicate nick: %s', nick.name)
+          pass
+      release_lock('nick-%s-scoring' % nick_string, identifier)
       return nick
     else:
-      return False
+        return False
 
 class Score(models.Model):
   nick = models.ForeignKey(Nick)
@@ -123,4 +113,24 @@ class Score(models.Model):
   def line(self):
     return Score.get_line(self.channel, self.line_index)
 
+class ScoreMeta(models.Model):
+  rule = models.ForeignKey(Rule)
+  channel = models.ForeignKey(Channel)
+  line_index = models.IntegerField(default=0)
+  date = models.DateTimeField(blank=True, null=True)
 
+  def increment_line_index(self):
+    self.line_index += 1
+    self.save()
+
+  def set_date(self, date):
+    self.date = date
+    self.save()
+
+  # Gets a line, checks for a date line, returns the formatted date or false otherwise
+  @staticmethod
+  def format_date_line(line):
+    if re.match('\[00:00\] --- ', line):
+      return datetime.strptime(line[12:], '%a %b %d %Y')
+    else:
+      return False
