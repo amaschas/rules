@@ -17,17 +17,18 @@ function escapeHtml(unsafe) {
  }
 
 (function($) {
+
   var show_rule_scores = function(test){
     var rule_id = $("#rule-scores").data('rule-id');
     var url = ''
-    console.log(typeof test);
+    // console.log(typeof test);
     if(typeof test !== 'undefined'){
       url = "/rule/scores/test/" + rule_id;
     }
     else{
       url = "/rule/scores/" + rule_id;
     }
-    console.log(url);
+    // console.log(url);
     $.ajax({
       dataType: "json",
       url: url,
@@ -35,13 +36,32 @@ function escapeHtml(unsafe) {
         var items = [];
         $.each(data, function(key, value){
           line = highlightMatches(value);
-          console.log(line);
+          // console.log(line);
           $('#rule-scores').append('<li>' + line + '</li>');
         });
       }
     });
   }
+
+  var show_rule_meta = function(){
+    var rule_id = $("#rule-scores").data('rule-id');
+    $.ajax({
+      dataType: "json",
+      url: "/rule/status/" + rule_id,
+      success: function(data){
+        console.log(data);
+        // var items = [];
+        // $.each(data, function(key, value){
+        //   line = highlightMatches(value);
+        //   // console.log(line);
+        //   $('#rule-scores').append('<li>' + line + '</li>');
+        // });
+      }
+    });
+  }
+
   $(document).ready(function(e) {
     show_rule_scores();
+    show_rule_meta();
   });
 })(jQuery);

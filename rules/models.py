@@ -25,16 +25,22 @@ class Channel(models.Model):
   title = models.CharField(max_length=100)
   slug = models.CharField(max_length=20, unique=True)
   redis_db = models.IntegerField(default=1)
-  # Maybe make these redis data?
+  #TODO: add total lines member
+  line_count = models.IntegerField(default=0)
   start_date = models.DateTimeField(blank=True, null=True)
   def __unicode__(self):
       return self.title
+
+  def set_line_count(self, count):
+    self.line_count = count
+    self.save()
 
 
 # TODO: track whether nicks are active (true on join or nick change or first seen, false on part or nick change)
 # once we're tracking whether nicks are active, we can score lines read per nick
 class Nick(models.Model):
   user = models.ForeignKey(User, blank=True, null=True)
+  # need to run alter table rules_nick modify name varchar(100) collate utf8_bin; for case sensitivity
   name = models.CharField(max_length=100, unique=True)
   def __unicode__(self):
     return self.name
@@ -70,26 +76,22 @@ class Nick(models.Model):
 
     # If nick string exists, either create or return existing, otherwise return False
     if nick_string:
-      identifier=str(uuid.uuid4())
-      while acquire_lock('nick-%s-scoring' % nick_string, identifier, 5) != identifier:
-        pass
-        # log.info('trying nick %s' % nick_string)
-        # time.sleep(1)
-      try:
-        nick = Nick.objects.get(name=nick_string)
-        # log.info('nick exists, getting: %s', nick.name)
-      except ObjectDoesNotExist:
-        nick = Nick(name=nick_string)
-        try:
-          nick.save()
-          # log.info('adding nick: %s', nick.name)
-        except IntegrityError:
-          log.info('duplicate nick: %s', nick.name)
-          pass
-      release_lock('nick-%s-scoring' % nick_string, identifier)
-      return nick
+      return nick_string
+      # try:
+      #   nick = Nick.objects.get(name=nick_string)
+      #   # log.info('nick exists, getting: %s', nick.name)
+      # except ObjectDoesNotExist:
+      #   nick = Nick(name=nick_string)
+      #   try:
+      #     nick.save()
+      #     # log.info('adding nick: %s', nick.name)
+      #   except IntegrityError:
+      #     log.info('duplicate nick: %s', nick.name)
+      #     pass
+      # return nick
     else:
         return False
+
 
 class Score(models.Model):
   nick = models.ForeignKey(Nick)
@@ -101,8 +103,12 @@ class Score(models.Model):
 
   # Gets any line for any channel
   @staticmethod
-  def get_line(channel, line_index):
-    r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
+  def get_line(channel, line_index, pool=None):
+    # Would a global pool lock?
+    if pool:
+     r = redis.Redis(connection_pool=pool)
+    else:
+      r = redis.Redis(host='localhost', port=6379, db=channel.redis_db)
     line = r.get('%s-%d' % (channel.slug, line_index))
     if line:
       return line
@@ -112,6 +118,7 @@ class Score(models.Model):
   # Gets own line
   def line(self):
     return Score.get_line(self.channel, self.line_index)
+
 
 class ScoreMeta(models.Model):
   rule = models.ForeignKey(Rule)

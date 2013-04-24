@@ -21,6 +21,7 @@ from rest_framework.decorators import api_view
 from models import *
 from forms import *
 from tasks import *
+from lock import check_lock
 
 #TODO:
   # Nick choosing
@@ -60,14 +61,29 @@ class TestView(RulesView):
       if 'reset-score-meta' in options:
         ScoreMeta.objects.all().delete()
       if 'score-channels' in options:
-        pass
+        # channels = Channel.objects.all()
+        # g = group(channel_count.s(channel=channel) for channel in channels)
+        # g.apply_async()
+        channel = Channel.objects.get(id=15)
+        channel.line_count=0
+        channel.save()
+        import cProfile
+        prof = cProfile.Profile()
+        prof.runcall(channel_count, channel=channel)
+        prof.dump_stats('/tmp/score_profile')
       if 'score-rules' in options:
         print 'scoring rules'
-        rules = Rule.objects.filter()
-        g = group(update_rule.s(rule=rule) for rule in rules)
-        g.apply_async()
-        # import cProfile
+        # rules = Rule.objects.all()
+        # g = group(update_rule.s(rule=rule) for rule in rules)
+        # g.apply_async()
+        nick = Nick(name='test')
+        nick.save()
+        rule = Rule.objects.get(id=93)
+        import cProfile
+        prof = cProfile.Profile()
         # cProfile.runctx('tester()', globals(), locals())
+        prof.runcall(update_rule, rule=rule)
+        prof.dump_stats('/tmp/score_profile')
     return {'form' : form}
 
 # def tester():
@@ -86,6 +102,17 @@ class RuleView(RulesView):
     return {'rule' : rule, 'score' : score['score__sum'], 'count' : count }
 
 
+# Checks whether rules is currently scoring by channel, how many lines complete out of total, latest date scored
+class RuleStatusView(View):
+  def get(self, request, *args, **kwargs):
+    data = []
+    for score_meta in ScoreMeta.objects.filter(rule=kwargs['rule_id']):
+      locked = check_lock('rule-%s-scoring' % score_meta.rule.id)
+      data.append({'locked' : locked, 'channel_title' : score_meta.channel.title, 'lines_scored' : score_meta.line_index, 'date_scored' : score_meta.date.strftime('%h, %d %Y'), 'line_total' : score_meta.channel.line_count})
+    json_data = json.dumps(data)
+    return HttpResponse(json_data, mimetype='application/json')
+
+
 class RuleScoresView(View):
   def get(self, request, *args, **kwargs):
     data = []
@@ -94,7 +121,7 @@ class RuleScoresView(View):
       rule = Rule.objects.get(id=score.rule.id)
       line = score.line()
       data.append({'nick' : score.nick.name, 'line' : line, 'rule' : rule.rule})
-      json_data = json.dumps(data)
+    json_data = json.dumps(data)
     return HttpResponse(json_data, mimetype='application/json')
 
 

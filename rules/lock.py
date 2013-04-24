@@ -6,16 +6,29 @@ REDIS_CLIENT = redis.Redis(host='localhost', port=6379, db=0)
 
 def acquire_lock(lockname, identifier, ltime=10):
   # print identifier
-  # print 'locking %s' % lockname
+  print 'locking %s' % lockname
   if REDIS_CLIENT.setnx(lockname, identifier):
     REDIS_CLIENT.expire(lockname, ltime)
     return identifier
+  # could put renew_lock here
   elif not REDIS_CLIENT.ttl(lockname):
     REDIS_CLIENT.expire(lockname, ltime)
   return False
 
+def check_lock(lockname):
+  if REDIS_CLIENT.get(lockname):
+    return True
+  return False
+
+def renew_lock(lockname, identifier, ltime=10):
+  # print 'lock renewed'
+  if REDIS_CLIENT.get(lockname) == identifier:
+    REDIS_CLIENT.expire(lockname, ltime)
+    return True
+  return False
+
 def release_lock(lockname, identifier):
-  # print 'unlocking %s' % lockname
+  print 'unlocking %s' % lockname
   pipe = REDIS_CLIENT.pipeline(True)
 
   while True:
