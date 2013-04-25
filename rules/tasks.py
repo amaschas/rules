@@ -23,9 +23,47 @@ def score(score, line):
     # print '%d - %s' % (matches, line)
     score.score = matches
     score.save()
+    # maybe return the score and save it in a batch
     return True
   else:
     return False
+
+
+# This should also get all unique nicks
+# prevents the nick collision problem
+@celery.task
+def update_channel(channel):
+  #this needs to lock
+  redis_index = channel.line_count
+  nicks = []
+  # get_line is slightly slower, maybe just do it the other way
+  pool = redis.ConnectionPool(host='localhost', port=6379, db=channel.redis_db)
+  line = Score.get_line(channel, redis_index, pool)
+  # r = redis.Redis(connection_pool=pool)
+  # line = r.get('%s-%d' % (channel.slug, redis_index))
+  while line:
+    if redis_index % 1000 == 0:
+      os.system('clear')
+      print redis_index
+    nick = Nick.get_nick(line)
+    if nick and nick not in nicks:
+      nicks.append(nick)
+    redis_index += 1
+    line = Score.get_line(channel, redis_index, pool)
+    # line = r.get('%s-%d' % (channel.slug, redis_index))
+  print nicks
+  if Nick.objects.count() == 0:
+    Nick.objects.bulk_create(Nick(name=nick_string) for nick_string in nicks)
+  else:
+    for nick_string in nicks:
+      Nick.objects.get_or_create(name=nick_string)
+  channel.set_line_count(redis_index + 1)
+
+  rules = Rule.objects.filter()
+  g = group(update_rule.s(rule=rule) for rule in rules)
+  g.apply_async()
+
+  print 'done'
 
 
 # Using a receiver function here instead of directly calling update_channel so update_channel can remain generalized
@@ -37,45 +75,18 @@ def update_channel_save_trigger(sender, **kwargs):
       rules = Rule.objects.filter()
       g = group(update_rule.s(rule=rule) for rule in rules)
       g.apply_async()
-      channel_count.delay(kwargs['instance'])
+      update_channel.delay(kwargs['instance'])
     except ObjectDoesNotExist:
       pass
 
 
-# This should also get all unique nicks
-# prevents the nick collision problem
-@celery.task
-def channel_count(channel):
-  redis_index = channel.line_count
-  nicks = []
-  pool = redis.ConnectionPool(host='localhost', port=6379, db=channel.redis_db)
-  line = Score.get_line(channel, redis_index, pool)
-  while line:
-    if redis_index % 1000 == 0:
-      os.system('clear')
-      print redis_index
-    nick = Nick.get_nick(line)
-    if nick and nick not in nicks:
-      nicks.append(nick)
-    redis_index += 1
-    line = Score.get_line(channel, redis_index, pool)
-  print nicks
-  Nick.objects.bulk_create(Nick(name=nick_string) for nick_string in nicks)
-  channel.set_line_count(redis_index + 1)
-  print 'done'
-
-
-# Could have a redis record of scoreable lines, or maybe just dump the non-scoring lines?
-# This would mean any line I read is garaunteed scorable
-# Scores the rule against every active channel, starting at index
+# Scores the rule against every active channel
 @celery.task
 def update_rule(rule):
   print 'starting score'
   identifier = str(uuid.uuid4())
   lockname = 'rule-%s-scoring' % rule.id
   if acquire_lock(lockname, identifier) == identifier:
-
-    test_nick = Nick.objects.get(name='test')
 
     try:
       channels = Channel.objects.filter()
@@ -99,28 +110,22 @@ def update_rule(rule):
           if line_date:
             score_meta.set_date(line_date)
           else:
-            # TODO separate get_nick from scoring process
-            # maybe have a simpler match_nick?
-            nick = Nick.get_nick(line)
-            if nick:
-              # could make this one enormous score group
-              # score.delay(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=score_meta.line_index), line=line)
+            nick_string = Nick.get_nick(line)
+            if nick_string:
+              nick = Nick.objects.get(name=nick_string)
 
-              # score.delay(Score(rule=rule, nick=test_nick, channel=channel, date=score_meta.date, line_index=index), line=line)
-              task_list.append(score.s(Score(rule=rule, nick=test_nick, channel=channel, date=score_meta.date, line_index=index), line=line))
+              # task_list.append(score.s(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), line=line))
 
-              score(Score(rule=rule, nick=test_nick, channel=channel, date=score_meta.date, line_index=index), line=line)
+              # doesn't seem to be any advantage to doing this async
+              score(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), line=line)
 
-
-          # TODO use a counter var to avoid slow mysql saves
-          # Maybe update this every 1000 interrations?
           index += 1
           line = Score.get_line(channel, index, pool)
         score_meta.line_index = index
         score_meta.save()
 
-        g = group(task_list)
-        g.apply_async()
+        # g = group(task_list)
+        # g.apply_async()
 
     except ObjectDoesNotExist:
       pass
@@ -134,4 +139,4 @@ def update_rule(rule):
 @receiver(post_save, sender=Rule)
 def update_rule_save_trigger(sender, **kwargs):
   if kwargs['created']:
-    update_rule.delay(channel=kwargs['instance'], index=0)
+    update_rule.delay(rule=kwargs['instance'], index=0)

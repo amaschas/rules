@@ -104,7 +104,6 @@ class Score(models.Model):
   # Gets any line for any channel
   @staticmethod
   def get_line(channel, line_index, pool=None):
-    # Would a global pool lock?
     if pool:
      r = redis.Redis(connection_pool=pool)
     else:

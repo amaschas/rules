@@ -43,6 +43,8 @@ class TestView(RulesView):
   template_name='test-form.html'
 
   def BuildContext(self, request, args, kwargs):
+    import cProfile
+    prof = cProfile.Profile()
     form = TestForm()
     if request.method == 'POST':
       options = request.POST.getlist('choices')
@@ -67,8 +69,6 @@ class TestView(RulesView):
         channel = Channel.objects.get(id=15)
         channel.line_count=0
         channel.save()
-        import cProfile
-        prof = cProfile.Profile()
         prof.runcall(channel_count, channel=channel)
         prof.dump_stats('/tmp/score_profile')
       if 'score-rules' in options:
@@ -76,20 +76,16 @@ class TestView(RulesView):
         # rules = Rule.objects.all()
         # g = group(update_rule.s(rule=rule) for rule in rules)
         # g.apply_async()
-        nick = Nick(name='test')
-        nick.save()
-        rule = Rule.objects.get(id=93)
-        import cProfile
-        prof = cProfile.Profile()
+        rule = Rule.objects.get(id=95)
         # cProfile.runctx('tester()', globals(), locals())
         prof.runcall(update_rule, rule=rule)
         prof.dump_stats('/tmp/score_profile')
     return {'form' : form}
 
 # def tester():
-#   rules = Rule.objects.filter()
-#   g = group(update_rule.s(rule=rule) for rule in rules)
-#   g.apply_async()
+  # rules = Rule.objects.filter()
+  # g = group(update_rule.s(rule=rule) for rule in rules)
+  # g.apply_async()
 
 
 class RuleView(RulesView):
@@ -172,7 +168,7 @@ class ScoreView(APIView):
     # print request.DATA
     try:
       channel = Channel.objects.get(slug=request.DATA['channel'])
-      update_channel.delay(channel, channel.current_line)
+      update_channel.delay(channel)
       return HttpResponse(status=201)
     except ObjectDoesNotExist:
       return HttpResponse(status=404)
