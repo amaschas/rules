@@ -29,6 +29,20 @@ def score(score, line):
     return False
 
 
+# scores a chunk of lines at a time to reduce concurrency overhead
+@celery.task
+def bulk_score(scores):
+  print 'bulk scoring'
+  for single_score in scores:
+    matches = len(re.findall(single_score['score'].rule.rule, single_score['line']))
+    if matches:
+      single_score['score'].score = matches
+      single_score['score'].save()
+
+    # to do this, I need to have a list of only the matches with score > 0
+    # Score.objects.bulk_create(single_score['score'] for single_score in scores)
+
+
 # This should also get all unique nicks
 # prevents the nick collision problem
 @celery.task
@@ -106,6 +120,13 @@ def update_rule(rule):
         while line:
           # print index
           renew_lock(lockname, identifier)
+
+          if index % 1000 == 0 and index > 0:
+            bulk_score.delay(list(task_list))
+            task_list = []
+            score_meta.line_index = index
+            score_meta.save()
+
           line_date = ScoreMeta.format_date_line(line)
           if line_date:
             score_meta.set_date(line_date)
@@ -114,10 +135,12 @@ def update_rule(rule):
             if nick_string:
               nick = Nick.objects.get(name=nick_string)
 
+              task_list.append({'score' : Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), 'line' : line})
+
               # task_list.append(score.s(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), line=line))
 
               # doesn't seem to be any advantage to doing this async
-              score(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), line=line)
+              # score(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), line=line)
 
           index += 1
           line = Score.get_line(channel, index, pool)

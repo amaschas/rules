@@ -142,7 +142,7 @@ INSTALLED_APPS = (
 # Settings for Celery
 
 import djcelery
-djcelery.setup_loader()
+djcelery.setup_loader() 
 
 # from datetime import timedelta
 
