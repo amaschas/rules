@@ -76,7 +76,7 @@ class TestView(RulesView):
         # rules = Rule.objects.all()
         # g = group(update_rule.s(rule=rule) for rule in rules)
         # g.apply_async()
-        rule = Rule.objects.get(id=95)
+        rule = Rule.objects.get(id=1)
         # cProfile.runctx('tester()', globals(), locals())
         prof.runcall(update_rule, rule=rule)
         prof.dump_stats('/tmp/score_profile')
