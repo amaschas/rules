@@ -37,6 +37,7 @@ def bulk_score(scores):
 
 
 # TODO remove all non scoring lines
+# TODO add batch_size arg
 @celery.task
 def update_channel(channel):
   #this needs to lock
@@ -77,19 +78,15 @@ def update_channel(channel):
 def update_channel_save_trigger(sender, **kwargs):
   if kwargs['created']:
     try:
-      # Could do this in a loop to prevent nick collisions
-      rules = Rule.objects.filter()
-      g = group(update_rule.s(rule=rule) for rule in rules)
-      g.apply_async()
       update_channel.delay(kwargs['instance'])
     except ObjectDoesNotExist:
       pass
 
 
-#TODO maybe worth using a redis hash to store nick, channel and date for each line, keyed by line number, maybe also the line?
+# TODO use BATCH_SIZE in settings here?
 # Scores the rule against every active channel
 @celery.task
-def update_rule(rule):
+def update_rule(rule, batch_size=5000):
   print 'starting score'
   identifier = str(uuid.uuid4())
   lockname = 'rule-%s-scoring' % rule.id
@@ -120,13 +117,11 @@ def update_rule(rule):
           nicks[nick.name] = nick
 
         while index < channel.line_count:
-          # print index
 
           line_indexes.appendleft(index)
           pipe.get('%s-%d' % (channel.slug, index))
 
-          # TODO use BATCH_SIZE in settings here
-          if index % 5000 == 0 and index > 0 or index == channel.line_count - 1:
+          if index % batch_size == 0 and index > 0 or index == channel.line_count - 1:
             renew_lock(lockname, identifier)
             lines = pipe.execute()
 
@@ -134,6 +129,8 @@ def update_rule(rule):
               current_line = line_indexes.pop()
               if line:
                 line_date = ScoreMeta.format_date_line(line, line_date)
+
+                #TODO batch the nick_strings into a dict of nick_objects keyed by line index
                 nick_string = Nick.get_nick(line)
                 if nick_string:
                   try:
@@ -165,4 +162,4 @@ def update_rule(rule):
 @receiver(post_save, sender=Rule)
 def update_rule_save_trigger(sender, **kwargs):
   if kwargs['created']:
-    update_rule.delay(rule=kwargs['instance'], index=0)
+    update_rule.delay(rule=kwargs['instance'])

@@ -25,7 +25,6 @@ class Channel(models.Model):
   title = models.CharField(max_length=100)
   slug = models.CharField(max_length=20, unique=True)
   redis_db = models.IntegerField(default=1)
-  #TODO: add total lines member
   line_count = models.IntegerField(default=0)
   start_date = models.DateTimeField(blank=True, null=True)
   def __unicode__(self):
@@ -74,21 +73,8 @@ class Nick(models.Model):
       if nick_match:
         nick_string = nick_match.group('nick')
 
-    # If nick string exists, either create or return existing, otherwise return False
     if nick_string:
       return nick_string
-      # try:
-      #   nick = Nick.objects.get(name=nick_string)
-      #   # log.info('nick exists, getting: %s', nick.name)
-      # except ObjectDoesNotExist:
-      #   nick = Nick(name=nick_string)
-      #   try:
-      #     nick.save()
-      #     # log.info('adding nick: %s', nick.name)
-      #   except IntegrityError:
-      #     log.info('duplicate nick: %s', nick.name)
-      #     pass
-      # return nick
     else:
         return False
 
@@ -135,8 +121,11 @@ class ScoreMeta(models.Model):
 
   # Gets a line, checks for a date line, returns the formatted date or false otherwise
   @staticmethod
-  def format_date_line(line, current_date):
+  def format_date_line(line, current_date=None):
     if re.match('\[00:00\] --- ', line):
       return datetime.strptime(line[12:], '%a %b %d %Y')
     else:
-      return current_date
+      if current_date:
+        return current_date
+      else:
+        return False
