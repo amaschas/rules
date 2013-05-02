@@ -49,13 +49,12 @@ function escapeHtml(unsafe) {
       dataType: "json",
       url: "/rule/status/" + rule_id,
       success: function(data){
-        console.log(data);
-        // var items = [];
-        // $.each(data, function(key, value){
-        //   line = highlightMatches(value);
-        //   // console.log(line);
-        //   $('#rule-scores').append('<li>' + line + '</li>');
-        // });
+        // console.log(data);
+        $('#score-meta').html('');
+        $.each(data[0], function(key, value){
+          // console.log(line);
+          $('#score-meta').append('<p><strong>' + key + ':</strong> ' + value + '</p>');
+        });
       }
     });
   }
@@ -63,5 +62,8 @@ function escapeHtml(unsafe) {
   $(document).ready(function(e) {
     show_rule_scores();
     show_rule_meta();
+    setInterval(function () {
+      show_rule_meta();
+    }, 5000);
   });
 })(jQuery);

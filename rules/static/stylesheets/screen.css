@@ -37,9 +37,9 @@ body header #nav li a, body header #nav li a:visited, body footer #nav li a, bod
 /* line 25, ../sass/screen.scss */
 body #content { margin: 25px 25px 25px 25px; }
 /* line 27, ../sass/screen.scss */
-body #content #rule-meta { margin: 0px 0px 20px 0px; }
+body #content #rule-meta, body #content #score-meta { margin: 0px 0px 20px 0px; }
 /* line 29, ../sass/screen.scss */
-body #content #rule-meta strong { font-weight: bold; }
+body #content #rule-meta strong, body #content #score-meta strong { font-weight: bold; }
 /* line 33, ../sass/screen.scss */
 body #content #rule-scores { list-style-type: none; }
 /* line 35, ../sass/screen.scss */

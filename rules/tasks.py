@@ -1,4 +1,5 @@
 import glob, re, redis, os
+from collections import deque
 from celery import Celery
 from celery import group
 
@@ -14,37 +15,37 @@ from lock import acquire_lock, release_lock, renew_lock
 # Might not need a backend
 celery = Celery('rules', backend='redis://localhost', broker='amqp://guest:guest@localhost:5672//')
 
-# Receives a rule, line and channel slug, calls score on the rule instance with the parameters
-@celery.task
-def score(score, line):
-  # log.debug('testing line %d - %s' % (score.line_index, line))
-  matches = len(re.findall(score.rule.rule, line))
-  if matches:
-    # print '%d - %s' % (matches, line)
-    score.score = matches
-    score.save()
-    # maybe return the score and save it in a batch
-    return True
-  else:
-    return False
-
 
 # scores a chunk of lines at a time to reduce concurrency overhead
 @celery.task
 def bulk_score(scores):
-  print 'bulk scoring'
-  for single_score in scores:
-    matches = len(re.findall(single_score['score'].rule.rule, single_score['line']))
-    if matches:
-      single_score['score'].score = matches
-      single_score['score'].save()
+  # print 'bulk scoring'
+  scored = list()
+  try:
+    while scores:
+      single_score = scores.popleft()
+      # single_score = scores.pop()
+      matches = len(re.findall(single_score['score'].rule.rule, single_score['line']))
+      if matches:
+        single_score['score'].score = matches
+        scored.append(single_score)
+  except IndexError:
+    pass
 
-    # to do this, I need to have a list of only the matches with score > 0
-    # Score.objects.bulk_create(single_score['score'] for single_score in scores)
+  # for index, single_score in enumerate(scores):
+  #   matches = len(re.findall(single_score['score'].rule.rule, single_score['line']))
+  #   if matches:
+  #     single_score['score'].score = matches
+  #   else:
+  #     del scores[index]
+
+  Score.objects.bulk_create(single_score['score'] for single_score in scored)
+  print 'bulk_score done'
 
 
 # This should also get all unique nicks
 # prevents the nick collision problem
+# TODO remove all non scoring lines -- this means that update_rule needs to do while index < channel.line_count
 @celery.task
 def update_channel(channel):
   #this needs to lock
@@ -56,9 +57,9 @@ def update_channel(channel):
   # r = redis.Redis(connection_pool=pool)
   # line = r.get('%s-%d' % (channel.slug, redis_index))
   while line:
-    if redis_index % 1000 == 0:
-      os.system('clear')
-      print redis_index
+    # if redis_index % 1000 == 0:
+    #   os.system('clear')
+    #   print redis_index
     nick = Nick.get_nick(line)
     if nick and nick not in nicks:
       nicks.append(nick)
@@ -94,6 +95,7 @@ def update_channel_save_trigger(sender, **kwargs):
       pass
 
 
+#TODO maybe worth using a redis hash to store nick, channel and date for each line, keyed by line number, maybe also the line?
 # Scores the rule against every active channel
 @celery.task
 def update_rule(rule):
@@ -113,42 +115,52 @@ def update_rule(rule):
 
         pool = redis.ConnectionPool(host='localhost', port=6379, db=channel.redis_db)
 
-        task_list = []
+        # TODO make this a dequeue for speed
+        task_list = deque()
+        nicks = dict()
+        # task_list = list()
         line = Score.get_line(channel, score_meta.line_index, pool)
         index = score_meta.line_index
+        line_date = score_meta.date
+
+        for nick in Nick.objects.all():
+          nicks[nick.name] = nick
 
         while line:
           # print index
           renew_lock(lockname, identifier)
 
+          # TODO use BATCH_SIZE in settings here
+          # Fire a batched score task, reset the task list, update score meta
           if index % 1000 == 0 and index > 0:
-            bulk_score.delay(list(task_list))
-            task_list = []
+            bulk_score.delay(deque(task_list))
+            task_list.clear()
             score_meta.line_index = index
+            score_meta.date = line_date
             score_meta.save()
 
-          line_date = ScoreMeta.format_date_line(line)
-          if line_date:
-            score_meta.set_date(line_date)
-          else:
-            nick_string = Nick.get_nick(line)
-            if nick_string:
-              nick = Nick.objects.get(name=nick_string)
+          line_date = ScoreMeta.format_date_line(line, line_date)
 
-              task_list.append({'score' : Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), 'line' : line})
+          # TODO get all of the nicks first, read from object instead of DB
+          nick_string = Nick.get_nick(line)
+          if nick_string:
+          #   nick = Nick.objects.get(name=nick_string)
+            try:
 
-              # task_list.append(score.s(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), line=line))
-
-              # doesn't seem to be any advantage to doing this async
-              # score(Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), line=line)
+              task_list.appendleft({'score' : Score(rule=rule, nick=nicks[nick_string], channel=channel, date=score_meta.date, line_index=index), 'line' : line})
+              # task_list.append({'score' : Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), 'line' : line})
+            except IndexError:
+              pass
 
           index += 1
           line = Score.get_line(channel, index, pool)
+
+        # Score the remaining lines if loop ends with a batch < BATCH_SIZE
+        bulk_score.delay(deque(task_list))
+        # bulk_score.delay(list(task_list))
         score_meta.line_index = index
         score_meta.save()
 
-        # g = group(task_list)
-        # g.apply_async()
 
     except ObjectDoesNotExist:
       pass

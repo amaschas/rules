@@ -135,8 +135,8 @@ class ScoreMeta(models.Model):
 
   # Gets a line, checks for a date line, returns the formatted date or false otherwise
   @staticmethod
-  def format_date_line(line):
+  def format_date_line(line, current_date):
     if re.match('\[00:00\] --- ', line):
       return datetime.strptime(line[12:], '%a %b %d %Y')
     else:
-      return False
+      return current_date
