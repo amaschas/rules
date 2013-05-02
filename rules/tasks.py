@@ -13,7 +13,7 @@ from lock import acquire_lock, release_lock, renew_lock
 # log = logging.getLogger(__name__)
 
 # Might not need a backend
-celery = Celery('rules', backend='redis://localhost', broker='amqp://guest:guest@localhost:5672//')
+celery = Celery('rules', broker='amqp://guest:guest@localhost:5672//')
 
 
 # scores a chunk of lines at a time to reduce concurrency overhead
