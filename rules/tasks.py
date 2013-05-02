@@ -113,6 +113,7 @@ def update_rule(rule):
 
         index = score_meta.line_index
         line_date = score_meta.date
+        line_indexes = deque()
 
         nicks = dict()
         for nick in Nick.objects.all():
@@ -121,6 +122,7 @@ def update_rule(rule):
         while index < channel.line_count:
           # print index
 
+          line_indexes.appendleft(index)
           pipe.get('%s-%d' % (channel.slug, index))
 
           # TODO use BATCH_SIZE in settings here
@@ -128,25 +130,16 @@ def update_rule(rule):
             renew_lock(lockname, identifier)
             lines = pipe.execute()
 
-            current_index = 0
-
-            if index >= 5000:
-              current_index = index - 5000
-              print current_index
-
-
             for line in lines:
+              current_line = line_indexes.pop()
               if line:
                 line_date = ScoreMeta.format_date_line(line, line_date)
                 nick_string = Nick.get_nick(line)
                 if nick_string:
                   try:
-                    # task_list.appendleft({'score' : Score(rule=rule, nick=nicks[nick_string], channel=channel, date=score_meta.date, line_index=current_index), 'line' : line})
-                    task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[nick_string], 'channel' : channel, 'date' : score_meta.date, 'line_index' : current_index}, 'line' : line})
+                    task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[nick_string], 'channel' : channel, 'date' : score_meta.date, 'line_index' : current_line}, 'line' : line})
                   except IndexError:
                     pass
-
-              current_index += 1
 
             bulk_score.delay(deque(task_list))
             task_list.clear()
