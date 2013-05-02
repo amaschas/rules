@@ -69,7 +69,7 @@ class TestView(RulesView):
         channel = Channel.objects.get(id=15)
         channel.line_count=0
         channel.save()
-        prof.runcall(channel_count, channel=channel)
+        prof.runcall(update_channel, channel=channel)
         prof.dump_stats('/tmp/score_profile')
       if 'score-rules' in options:
         print 'scoring rules'

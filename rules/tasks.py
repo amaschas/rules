@@ -24,6 +24,7 @@ def bulk_score(scores):
   try:
     while scores:
       single_score = scores.popleft()
+
       # single_score = scores.pop()
       matches = len(re.findall(single_score['score'].rule.rule, single_score['line']))
       if matches:
@@ -32,20 +33,11 @@ def bulk_score(scores):
   except IndexError:
     pass
 
-  # for index, single_score in enumerate(scores):
-  #   matches = len(re.findall(single_score['score'].rule.rule, single_score['line']))
-  #   if matches:
-  #     single_score['score'].score = matches
-  #   else:
-  #     del scores[index]
-
   Score.objects.bulk_create(single_score['score'] for single_score in scored)
   print 'bulk_score done'
 
 
-# This should also get all unique nicks
-# prevents the nick collision problem
-# TODO remove all non scoring lines -- this means that update_rule needs to do while index < channel.line_count
+# TODO remove all non scoring lines
 @celery.task
 def update_channel(channel):
   #this needs to lock
@@ -114,50 +106,56 @@ def update_rule(rule):
           score_meta.save()
 
         pool = redis.ConnectionPool(host='localhost', port=6379, db=channel.redis_db)
+        r = redis.Redis(connection_pool=pool)
+        pipe = r.pipeline()
 
-        # TODO make this a dequeue for speed
         task_list = deque()
-        nicks = dict()
         # task_list = list()
-        line = Score.get_line(channel, score_meta.line_index, pool)
+
         index = score_meta.line_index
         line_date = score_meta.date
 
+        nicks = dict()
         for nick in Nick.objects.all():
           nicks[nick.name] = nick
 
-        while line:
+        while index < channel.line_count:
           # print index
-          renew_lock(lockname, identifier)
+
+          pipe.get('%s-%d' % (channel.slug, index))
 
           # TODO use BATCH_SIZE in settings here
-          # Fire a batched score task, reset the task list, update score meta
-          if index % 1000 == 0 and index > 0:
+          if index % 5000 == 0 and index > 0 or index == channel.line_count - 1:
+            renew_lock(lockname, identifier)
+            lines = pipe.execute()
+
+            current_index = 0
+
+            if index >= 5000:
+              current_index = index - 5000
+              print current_index
+
+
+            for line in lines:
+              if line:
+                line_date = ScoreMeta.format_date_line(line, line_date)
+                nick_string = Nick.get_nick(line)
+                if nick_string:
+                  try:
+                    task_list.appendleft({'score' : Score(rule=rule, nick=nicks[nick_string], channel=channel, date=score_meta.date, line_index=current_index), 'line' : line})
+                  except IndexError:
+                    pass
+
+              current_index += 1
+
             bulk_score.delay(deque(task_list))
             task_list.clear()
             score_meta.line_index = index
             score_meta.date = line_date
             score_meta.save()
 
-          line_date = ScoreMeta.format_date_line(line, line_date)
-
-          # TODO get all of the nicks first, read from object instead of DB
-          nick_string = Nick.get_nick(line)
-          if nick_string:
-          #   nick = Nick.objects.get(name=nick_string)
-            try:
-
-              task_list.appendleft({'score' : Score(rule=rule, nick=nicks[nick_string], channel=channel, date=score_meta.date, line_index=index), 'line' : line})
-              # task_list.append({'score' : Score(rule=rule, nick=nick, channel=channel, date=score_meta.date, line_index=index), 'line' : line})
-            except IndexError:
-              pass
-
           index += 1
-          line = Score.get_line(channel, index, pool)
 
-        # Score the remaining lines if loop ends with a batch < BATCH_SIZE
-        bulk_score.delay(deque(task_list))
-        # bulk_score.delay(list(task_list))
         score_meta.line_index = index
         score_meta.save()
 
