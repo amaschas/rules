@@ -26,14 +26,13 @@ def bulk_score(scores):
       single_score = scores.popleft()
 
       # single_score = scores.pop()
-      matches = len(re.findall(single_score['score'].rule.rule, single_score['line']))
+      matches = len(re.findall(single_score['score']['rule'].rule, single_score['line']))
       if matches:
-        single_score['score'].score = matches
-        scored.append(single_score)
+        scored.append(Score(rule=single_score['score']['rule'], nick=single_score['score']['nick'], channel=single_score['score']['channel'], date=single_score['score']['date'], line_index=single_score['score']['line_index'], score=matches))
   except IndexError:
     pass
 
-  Score.objects.bulk_create(single_score['score'] for single_score in scored)
+  Score.objects.bulk_create(single_score for single_score in scored)
   print 'bulk_score done'
 
 
@@ -142,7 +141,8 @@ def update_rule(rule):
                 nick_string = Nick.get_nick(line)
                 if nick_string:
                   try:
-                    task_list.appendleft({'score' : Score(rule=rule, nick=nicks[nick_string], channel=channel, date=score_meta.date, line_index=current_index), 'line' : line})
+                    # task_list.appendleft({'score' : Score(rule=rule, nick=nicks[nick_string], channel=channel, date=score_meta.date, line_index=current_index), 'line' : line})
+                    task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[nick_string], 'channel' : channel, 'date' : score_meta.date, 'line_index' : current_index}, 'line' : line})
                   except IndexError:
                     pass
 
