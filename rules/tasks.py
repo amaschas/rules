@@ -103,12 +103,12 @@ def update_rule(rule, batch_size=5000):
                 # print line
                 # print line['line']
                 # print line['nick']
-                date = line['date']
-                if not date:
+                if not line['date']:
                   print 'no date'
                   print line
                 # print 'date testing'
                 # print date
+                date = line['date']
                 try:
                   task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : date, 'line_index' : current_line}, 'line' : line['line']})
                 except IndexError:
