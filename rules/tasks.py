@@ -112,12 +112,10 @@ def update_rule(rule, batch_size=5000):
                 except IndexError:
                   pass
 
-            print 'foo'
             bulk_score.delay(deque(task_list))
-            print 'bar'
             task_list.clear()
             score_meta.line_index = index
-            score_meta.date = time.strptime(date, '%Y-%m-%d %H:%M:%S')
+            # score_meta.date = time.strptime(date, '%Y-%m-%d %H:%M:%S')
             score_meta.save()
 
           index += 1
