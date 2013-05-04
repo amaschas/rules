@@ -115,10 +115,7 @@ class LogUpdateHandler(FileSystemEventHandler):
       self.redis_index += 1
 
     self.channel.set_line_count(self.redis_index + 1)
-    try:
-      self.pipe.execute()
-    except ResponseError:
-      pass
+    self.pipe.execute()
     if Nick.objects.count() == 0:
       Nick.objects.bulk_create(Nick(name=nick[0]) for nick in self.nicks.iteritems())
     else:

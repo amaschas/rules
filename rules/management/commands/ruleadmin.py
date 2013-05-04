@@ -62,7 +62,7 @@ class Command(BaseCommand):
         self.stdout.write('Scoring rule "%s"' % rule.name)
         if options['profile']:
           prof.runcall(update_rule, rule=rule, batch_size=options['batch_size'])
-          prof.dump_stats(options['profile'])
+          prof.dump_stats(options['profile_output'])
         else:
           update_rule(rule)
         self.stdout.write('Finished scoring rule "%s"' % rule.name)

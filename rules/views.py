@@ -65,7 +65,7 @@ class RuleScoresView(View):
     data = []
     limit = 100
 
-    pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+    pool = redis.ConnectionPool(host='localhost', port=6379, db=1)
     r = redis.Redis(connection_pool=pool)
     pipe = r.pipeline()
 
