@@ -90,18 +90,21 @@ def update_rule(rule, batch_size=5000):
             renew_lock(lockname, identifier)
             lines = pipe.execute()
 
+            date = ''
+
             for line in lines:
               current_line = line_indexes.pop()
               if line:
                 try:
-                  task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : line['date'], 'line_index' : current_line}, 'line' : line['line']})
+                  date = line['date']
+                  task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : date, 'line_index' : current_line}, 'line' : line['line']})
                 except IndexError:
                   pass
 
             bulk_score.delay(deque(task_list))
             task_list.clear()
             score_meta.line_index = index
-            score_meta.date = line_date
+            score_meta.date = date
             score_meta.save()
 
           index += 1

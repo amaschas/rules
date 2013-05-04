@@ -44,40 +44,6 @@ class Nick(models.Model):
   def __unicode__(self):
     return self.name
 
-  # Gets or creates a nick object from a line
-  @staticmethod
-  def get_nick(line):
-
-    #[a-zA-Z0-9\_\-\\\[\]\{\}\^\`\|]
-    # Regex to match irc nick strings
-    nick_regex_string = '[a-zA-Z0-9_-\{\}\^\`\|]+'
-
-    # Cut off timestamp
-    line = line[8:]
-
-    # Match strings for irc line types
-    regex_strings = [
-      '<(?P<nick>%s)>' % nick_regex_string,
-      'Action: (?P<nick>%s) ' % nick_regex_string,
-      'Nick change: (?P<nick>%s) ' % nick_regex_string,
-      'Topic changed on [#&][[a-zA-Z0-9]+ by (?P<nick>%s)\!' % nick_regex_string,
-      '%s kicked from [#&][[a-zA-Z0-9]+ by (?P<nick>%s)' % (nick_regex_string, nick_regex_string),
-      '(?P<nick>%s) \(.*\) [left|joined]' % nick_regex_string,
-      '[#&][[a-zA-Z0-9]+: mode change \'.*\' by (?P<nick>%s)\!' % nick_regex_string
-    ]
-
-    nick_string = ''
-    # Search for nick in line using each match pattern
-    for regex_string in regex_strings:
-      nick_match = re.match(regex_string, line)
-      if nick_match:
-        nick_string = nick_match.group('nick')
-
-    if nick_string:
-      return nick_string
-    else:
-        return False
-
 
 class Score(models.Model):
   nick = models.ForeignKey(Nick)
@@ -118,14 +84,3 @@ class ScoreMeta(models.Model):
   def set_date(self, date):
     self.date = date
     self.save()
-
-  # Gets a line, checks for a date line, returns the formatted date or false otherwise
-  @staticmethod
-  def format_date_line(line, current_date=None):
-    if re.match('\[00:00\] --- ', line):
-      return datetime.strptime(line[12:], '%a %b %d %Y')
-    else:
-      if current_date:
-        return current_date
-      else:
-        return False
