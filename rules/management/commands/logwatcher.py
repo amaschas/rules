@@ -34,6 +34,7 @@ class LogUpdateHandler(FileSystemEventHandler):
     if self.options['overwrite']:
       r.flushdb()
       self.redis_index = 0
+      channel.set_line_count(0)
       self.date = self.channel.start_date
     else:
       self.redis_index = self.channel.line_count + 1
@@ -102,9 +103,6 @@ class LogUpdateHandler(FileSystemEventHandler):
         for regex_string in self.nick_regex_strings:
           nick_match = re.match(regex_string, line[8:])
           if nick_match:
-            if self.redis_index == 101:
-              print 'test'
-              print self.date
             nick_string = nick_match.group('nick')
             if nick_string not in self.nicks:
               self.nicks[nick_string] = True
