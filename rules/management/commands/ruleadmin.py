@@ -6,6 +6,10 @@ from django.core.management.base import BaseCommand, CommandError
 from rules.models import *
 from rules.tasks import *
 
+import logging
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+
 class Command(BaseCommand):
   option_list = BaseCommand.option_list + (
     make_option('--delete-rules', action='store_true', default=False, help='Delete all rules'),
