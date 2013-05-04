@@ -100,11 +100,12 @@ def update_rule(rule, batch_size=5000):
               current_line = line_indexes.pop()
               if line:
                 # print current_line
-                print line
+                # print line
                 # print line['line']
                 # print line['nick']
-
                 date = line['date']
+                if not date:
+                  print line
                 # print 'date testing'
                 # print date
                 try:
@@ -117,8 +118,6 @@ def update_rule(rule, batch_size=5000):
             bulk_score.delay(deque(task_list))
             task_list.clear()
             score_meta.line_index = index
-            print str(type(date))
-            print '"%s"' % date
             # import pdb; pdb.Pdb(skip=['django.*']).set_trace()
             score_meta.date = date
             score_meta.save()
