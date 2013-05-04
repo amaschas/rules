@@ -90,6 +90,7 @@ class LogUpdateHandler(FileSystemEventHandler):
     self.file.seek(self.where)
 
     # For each line in the file, insert into redis, keyed by the channel name and line number
+    # TODO set the date for the entire file at the end, so each file is dated correctly regardless of order
     for line in self.file:
       line = line.strip()
       if self.redis_index % 1000 == 0 and self.options['verbosity'] > 1:
