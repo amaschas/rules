@@ -5,6 +5,7 @@ from celery import group
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.signals import post_save
+from django.conf import settings
 
 from models import *
 from lock import acquire_lock, release_lock, renew_lock
@@ -34,43 +35,6 @@ def bulk_score(scores):
 
   Score.objects.bulk_create(single_score for single_score in scored)
   print 'bulk_score done'
-
-
-# TODO remove all non scoring lines
-# TODO add batch_size arg
-@celery.task
-def update_channel(channel):
-  #this needs to lock
-  redis_index = channel.line_count
-  nicks = []
-  # get_line is slightly slower, maybe just do it the other way
-  pool = redis.ConnectionPool(host='localhost', port=6379, db=channel.redis_db)
-  line = Score.get_line(channel, redis_index, pool)
-  # r = redis.Redis(connection_pool=pool)
-  # line = r.get('%s-%d' % (channel.slug, redis_index))
-  while line:
-    # if redis_index % 1000 == 0:
-    #   os.system('clear')
-    #   print redis_index
-    nick = Nick.get_nick(line)
-    if nick and nick not in nicks:
-      nicks.append(nick)
-    redis_index += 1
-    line = Score.get_line(channel, redis_index, pool)
-    # line = r.get('%s-%d' % (channel.slug, redis_index))
-  print nicks
-  if Nick.objects.count() == 0:
-    Nick.objects.bulk_create(Nick(name=nick_string) for nick_string in nicks)
-  else:
-    for nick_string in nicks:
-      Nick.objects.get_or_create(name=nick_string)
-  channel.set_line_count(redis_index + 1)
-
-  rules = Rule.objects.filter()
-  g = group(update_rule.s(rule=rule) for rule in rules)
-  g.apply_async()
-
-  print 'done'
 
 
 # Using a receiver function here instead of directly calling update_channel so update_channel can remain generalized
@@ -119,7 +83,8 @@ def update_rule(rule, batch_size=5000):
         while index < channel.line_count:
 
           line_indexes.appendleft(index)
-          pipe.get('%s-%d' % (channel.slug, index))
+
+          pipe.hgetall('-'.join([channel.slug, str(index)]))
 
           if index % batch_size == 0 and index > 0 or index == channel.line_count - 1:
             renew_lock(lockname, identifier)
@@ -128,15 +93,10 @@ def update_rule(rule, batch_size=5000):
             for line in lines:
               current_line = line_indexes.pop()
               if line:
-                line_date = ScoreMeta.format_date_line(line, line_date)
-
-                #TODO batch the nick_strings into a dict of nick_objects keyed by line index
-                nick_string = Nick.get_nick(line)
-                if nick_string:
-                  try:
-                    task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[nick_string], 'channel' : channel, 'date' : score_meta.date, 'line_index' : current_line}, 'line' : line})
-                  except IndexError:
-                    pass
+                try:
+                  task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : line['date'], 'line_index' : current_line}, 'line' : line['line']})
+                except IndexError:
+                  pass
 
             bulk_score.delay(deque(task_list))
             task_list.clear()

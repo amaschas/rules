@@ -187,6 +187,8 @@ djcelery.setup_loader()
 #     }
 # }
 
+# BATCH_SIZE = 5000
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,

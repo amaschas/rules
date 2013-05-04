@@ -13,7 +13,9 @@ class Command(BaseCommand):
     make_option('--reset-scores', action='store_true', default=False, help='Deletes all scores and resets score meta'),
     make_option('--score-channel', help='Score all rules for a single channel slug'),
     make_option('--score-rule', help='Score a single rule by id'),
-    make_option('--profile', default='/tmp/score_profile', help='Enable profiling with cProfile, takes an optional path argument'),
+    make_option('--batch-size', default=5000, help='The number of lines to batch in scoring tasks'),
+    make_option('--profile', action='store_true', default=False, help='Enable profiling with cProfile'),
+    make_option('--profile-output', default='/tmp/score_profile', help='Path to store profile output, defaults to /tmp/score_profile'),
   )
 
   def handle(self, *args, **options):
@@ -59,7 +61,7 @@ class Command(BaseCommand):
 
         self.stdout.write('Scoring rule "%s"' % rule.name)
         if options['profile']:
-          prof.runcall(update_rule, rule=rule)
+          prof.runcall(update_rule, rule=rule, batch_size=options['batch_size'])
           prof.dump_stats(options['profile'])
         else:
           update_rule(rule)

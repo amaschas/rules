@@ -17,7 +17,6 @@ urlpatterns = patterns('',
     url(r'^update-rule/(?P<id>\d+)/$', RuleUpdateView.as_view()),
     url(r'^channel-create-form/$', ChannelCreateView.as_view()),
     url(r'^score/$', ScoreView.as_view()),
-    url(r'^test/$', TestView.as_view()),
 )
 
 urlpatterns += staticfiles_urlpatterns()

@@ -39,55 +39,6 @@ class RulesView(TemplateView):
     return self.render_to_response(self.BuildContext(request, args, kwargs))
 
 
-class TestView(RulesView):
-  template_name='test-form.html'
-
-  def BuildContext(self, request, args, kwargs):
-    import cProfile
-    prof = cProfile.Profile()
-    form = TestForm()
-    if request.method == 'POST':
-      options = request.POST.getlist('choices')
-      if 'delete-channels' in options:
-        print 'deleting channels'
-        Channel.objects.all().delete()
-      if 'delete-rules' in options:
-        print 'deleting rules'
-        Rule.objects.all().delete()
-      if 'delete-nicks' in options:
-        print 'deleting nicks'
-        Nick.objects.all().delete()
-      if 'delete-scores' in options:
-        print 'deleting scores'
-        Score.objects.all().delete()
-      if 'reset-score-meta' in options:
-        ScoreMeta.objects.all().delete()
-      if 'score-channels' in options:
-        # channels = Channel.objects.all()
-        # g = group(channel_count.s(channel=channel) for channel in channels)
-        # g.apply_async()
-        channel = Channel.objects.get(id=15)
-        channel.line_count=0
-        channel.save()
-        prof.runcall(update_channel, channel=channel)
-        prof.dump_stats('/tmp/score_profile')
-      if 'score-rules' in options:
-        print 'scoring rules'
-        # rules = Rule.objects.all()
-        # g = group(update_rule.s(rule=rule) for rule in rules)
-        # g.apply_async()
-        rule = Rule.objects.get(id=1)
-        # cProfile.runctx('tester()', globals(), locals())
-        prof.runcall(update_rule, rule=rule)
-        prof.dump_stats('/tmp/score_profile')
-    return {'form' : form}
-
-# def tester():
-  # rules = Rule.objects.filter()
-  # g = group(update_rule.s(rule=rule) for rule in rules)
-  # g.apply_async()
-
-
 class RuleView(RulesView):
   template_name = 'rule.html'
 
@@ -113,10 +64,18 @@ class RuleScoresView(View):
   def get(self, request, *args, **kwargs):
     data = []
     limit = 100
+
+    pool = redis.ConnectionPool(host='localhost', port=6379, db=0)
+    r = redis.Redis(connection_pool=pool)
+    pipe = r.pipeline()
+
+    rule = Rule.objects.get(id=kwargs['rule_id'])
+
     for score in Score.objects.filter(rule=kwargs['rule_id']).order_by('date')[:limit]:
-      rule = Rule.objects.get(id=score.rule.id)
-      line = score.line()
-      data.append({'nick' : score.nick.name, 'line' : line, 'rule' : rule.rule})
+      pipe.hgetall('-'.join([score.channel.slug, str(score.line_index)]))
+    line_data = pipe.execute()
+    for line in line_data:
+      data.append({'nick' : line['nick'], 'line' : line['line'], 'rule' : rule.rule})
     json_data = json.dumps(data)
     return HttpResponse(json_data, mimetype='application/json')
 
