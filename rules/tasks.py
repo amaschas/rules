@@ -112,7 +112,7 @@ def update_rule(rule, batch_size=5000):
                 except IndexError:
                   pass
 
-            # print index
+            print index
             # print date
             bulk_score.delay(deque(task_list))
             task_list.clear()
