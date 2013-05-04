@@ -20,7 +20,7 @@ celery = Celery('rules', broker='amqp://guest:guest@localhost:5672//')
 # scores a chunk of lines at a time to reduce concurrency overhead
 @celery.task
 def bulk_score(scores):
-  # print 'bulk scoring'
+  print 'bulk scoring'
   scored = list()
   try:
     while scores:
@@ -31,9 +31,9 @@ def bulk_score(scores):
       if matches:
         print 'test'
         print single_score['score']
-        date = time.strptime(single_score['score']['date'], '%Y-%m-%d %H:%M:%S')
-        print date
-        scored.append(Score(rule=single_score['score']['rule'], nick=single_score['score']['nick'], channel=single_score['score']['channel'], date=date, line_index=single_score['score']['line_index'], score=matches))
+        # date = time.strptime(single_score['score']['date'], '%Y-%m-%d %H:%M:%S')
+        # print date
+        scored.append(Score(rule=single_score['score']['rule'], nick=single_score['score']['nick'], channel=single_score['score']['channel'], date=single_score['score']['date'], line_index=single_score['score']['line_index'], score=matches))
   except IndexError:
     pass
 
@@ -112,11 +112,15 @@ def update_rule(rule, batch_size=5000):
                 except IndexError:
                   pass
 
-            print index
+            # print index
+            # print date
             bulk_score.delay(deque(task_list))
             task_list.clear()
             score_meta.line_index = index
-            score_meta.date = time.strptime(date, '%Y-%m-%d %H:%M:%S')
+            print str(type(date))
+            print '"%s"' % date
+            # import pdb; pdb.Pdb(skip=['django.*']).set_trace()
+            score_meta.date = date
             score_meta.save()
 
           index += 1
