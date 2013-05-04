@@ -99,23 +99,24 @@ def update_rule(rule, batch_size=5000):
             for line in lines:
               current_line = line_indexes.pop()
               if line:
-                print current_line
-                print line['date']
-                print line['line']
-                print line['nick']
+                # print current_line
+                # print line['date']
+                # print line['line']
+                # print line['nick']
 
                 date = line['date']
-                print 'date testing'
-                print date
+                # print 'date testing'
+                # print date
                 try:
                   task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : date, 'line_index' : current_line}, 'line' : line['line']})
                 except IndexError:
                   pass
 
+            print index
             bulk_score.delay(deque(task_list))
             task_list.clear()
             score_meta.line_index = index
-            # score_meta.date = time.strptime(date, '%Y-%m-%d %H:%M:%S')
+            score_meta.date = time.strptime(date, '%Y-%m-%d %H:%M:%S')
             score_meta.save()
 
           index += 1
