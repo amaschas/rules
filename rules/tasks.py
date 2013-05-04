@@ -92,7 +92,7 @@ def update_rule(rule, batch_size=5000):
               try:
                 date = line['date']
                 task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : date, 'line_index' : current_line}, 'line' : line['line']})
-              except IndexError:
+              except KeyError:
                 pass
 
             bulk_score.delay(deque(task_list))
