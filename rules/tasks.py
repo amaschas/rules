@@ -84,6 +84,8 @@ def update_rule(rule, batch_size=5000):
         for nick in Nick.objects.all():
           nicks[nick.name] = nick
 
+        date =  ''
+
         while index < channel.line_count:
 
           line_indexes.appendleft(index)
@@ -93,8 +95,6 @@ def update_rule(rule, batch_size=5000):
           if index % batch_size == 0 and index > 0 or index == channel.line_count - 1:
             renew_lock(lockname, identifier)
             lines = pipe.execute()
-
-            date =  ''
 
             for line in lines:
               current_line = line_indexes.pop()
