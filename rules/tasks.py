@@ -20,25 +20,17 @@ celery = Celery('rules', broker='amqp://guest:guest@localhost:5672//')
 # scores a chunk of lines at a time to reduce concurrency overhead
 @celery.task
 def bulk_score(scores):
-  print 'bulk scoring'
   scored = list()
   try:
     while scores:
       single_score = scores.popleft()
-
-      # single_score = scores.pop()
       matches = len(re.findall(single_score['score']['rule'].rule, single_score['line']))
       if matches:
-        print 'test'
-        print single_score['score']
-        # date = time.strptime(single_score['score']['date'], '%Y-%m-%d %H:%M:%S')
-        # print date
         scored.append(Score(rule=single_score['score']['rule'], nick=single_score['score']['nick'], channel=single_score['score']['channel'], date=single_score['score']['date'], line_index=single_score['score']['line_index'], score=matches))
   except IndexError:
     pass
 
   Score.objects.bulk_create(single_score for single_score in scored)
-  print 'bulk_score done'
 
 
 # Using a receiver function here instead of directly calling update_channel so update_channel can remain generalized
@@ -74,7 +66,6 @@ def update_rule(rule, batch_size=5000):
         pipe = r.pipeline()
 
         task_list = deque()
-        # task_list = list()
 
         index = score_meta.line_index
         line_date = score_meta.date
@@ -98,30 +89,15 @@ def update_rule(rule, batch_size=5000):
 
             for line in lines:
               current_line = line_indexes.pop()
-              if line:
-                # print current_line
-                # print line
-                # print line['line']
-                # print line['nick']
-                if not line['date']:
-                  print 'no date'
-                  print line
-                # print 'date testing'
-                # print date
+              try:
                 date = line['date']
-                try:
-                  task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : date, 'line_index' : current_line}, 'line' : line['line']})
-                except IndexError:
-                  pass
+                task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : date, 'line_index' : current_line}, 'line' : line['line']})
+              except IndexError:
+                pass
 
-            # print index
-            # print date
-            # if not date:
-            #   print 'no date'
             bulk_score.delay(deque(task_list))
             task_list.clear()
             score_meta.line_index = index
-            # import pdb; pdb.Pdb(skip=['django.*']).set_trace()
             score_meta.date = date
             score_meta.save()
 

@@ -19,7 +19,7 @@ class LogUpdateHandler(FileSystemEventHandler):
 
   def __init__(self, options):
 
-    print options
+    # print options
 
     self.options = options
     self.nicks = dict()
