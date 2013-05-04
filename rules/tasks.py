@@ -105,6 +105,7 @@ def update_rule(rule, batch_size=5000):
                 # print line['nick']
                 date = line['date']
                 if not date:
+                  print 'no date'
                   print line
                 # print 'date testing'
                 # print date
@@ -115,8 +116,8 @@ def update_rule(rule, batch_size=5000):
 
             # print index
             # print date
-            if not date:
-              print 'no date'
+            # if not date:
+            #   print 'no date'
             bulk_score.delay(deque(task_list))
             task_list.clear()
             score_meta.line_index = index
