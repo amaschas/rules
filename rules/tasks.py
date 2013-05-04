@@ -1,4 +1,4 @@
-import glob, re, redis, os
+import glob, re, redis, os, time
 from collections import deque
 from celery import Celery
 from celery import group
@@ -29,7 +29,11 @@ def bulk_score(scores):
       # single_score = scores.pop()
       matches = len(re.findall(single_score['score']['rule'].rule, single_score['line']))
       if matches:
-        scored.append(Score(rule=single_score['score']['rule'], nick=single_score['score']['nick'], channel=single_score['score']['channel'], date=single_score['score']['date'], line_index=single_score['score']['line_index'], score=matches))
+        print 'test'
+        print single_score['score']
+        date = time.strptime(single_score['score']['date'], '%Y-%m-%d %H:%M:%S')
+        print date
+        scored.append(Score(rule=single_score['score']['rule'], nick=single_score['score']['nick'], channel=single_score['score']['channel'], date=date, line_index=single_score['score']['line_index'], score=matches))
   except IndexError:
     pass
 
@@ -90,13 +94,18 @@ def update_rule(rule, batch_size=5000):
             renew_lock(lockname, identifier)
             lines = pipe.execute()
 
-            date = ''
+            date =  ''
 
             for line in lines:
               current_line = line_indexes.pop()
               if line:
+                print current_line
+                print line['date']
+                print line['line']
+                print line['nick']
+
+                date = line['date']
                 try:
-                  date = line['date']
                   task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : date, 'line_index' : current_line}, 'line' : line['line']})
                 except IndexError:
                   pass
@@ -104,7 +113,7 @@ def update_rule(rule, batch_size=5000):
             bulk_score.delay(deque(task_list))
             task_list.clear()
             score_meta.line_index = index
-            score_meta.date = date
+            score_meta.date = time.strptime(date, '%Y-%m-%d %H:%M:%S')
             score_meta.save()
 
           index += 1

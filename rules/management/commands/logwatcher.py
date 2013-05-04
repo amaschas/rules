@@ -93,16 +93,18 @@ class LogUpdateHandler(FileSystemEventHandler):
     # TODO set the date for the entire file at the end, so each file is dated correctly regardless of order
     for line in self.file:
       line = line.strip()
-      if self.redis_index % 1000 == 0 and self.options['verbosity'] > 1:
-        os.system('clear')
-        print 'Current index: %s' % self.redis_index
+      # if self.redis_index % 1000 == 0 and self.options['verbosity'] > 1:
+      #   os.system('clear')
+      #   print 'Current index: %s' % self.redis_index
       if re.match('\[00:00\] --- ', line):
         self.date = datetime.strptime(line[12:], '%a %b %d %Y')
       else:
-        line = line[8:]
         for regex_string in self.nick_regex_strings:
-          nick_match = re.match(regex_string, line)
+          nick_match = re.match(regex_string, line[8:])
           if nick_match:
+            if self.redis_index == 101:
+              print 'test'
+              print self.date
             nick_string = nick_match.group('nick')
             if nick_string not in self.nicks:
               self.nicks[nick_string] = True
