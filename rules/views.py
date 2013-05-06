@@ -91,7 +91,7 @@ class ScorePlotValues(View):
       start_date = int(channel.start_date.strftime("%s")) * 1000
       latest_score = Score.objects.filter(channel=channel).latest('date')
       end_date = int(latest_score.date.strftime("%s")) * 1000
-      plot_values = Score.objects.extra({'date':"date(date)"}).values('date').annotate(score=Count('score')).order_by('date')
+      plot_values = Score.objects.filter(rule=kwargs['rule_id']).extra({'date':"date(date)"}).values('date').annotate(score=Count('score')).order_by('date')
       for plot in plot_values:
         timestamp = int(plot['date'].strftime("%s")) * 1000
         print timestamp

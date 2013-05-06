@@ -36,7 +36,6 @@ function escapeHtml(unsafe) {
         var items = [];
         $.each(data, function(key, value){
           line = highlightMatches(value);
-          // console.log(line);
           $('#rule-scores').append('<li>' + line + '</li>');
         });
       }
@@ -49,10 +48,8 @@ function escapeHtml(unsafe) {
       dataType: "json",
       url: "/rule/status/" + rule_id,
       success: function(data){
-        // console.log(data);
         $('#score-meta').html('');
         $.each(data[0], function(key, value){
-          // console.log(line);
           $('#score-meta').append('<p><strong>' + key + ':</strong> ' + value + '</p>');
         });
       }
@@ -65,7 +62,6 @@ function escapeHtml(unsafe) {
       dataType: "json",
       url: "/rule/plot/" + rule_id,
       success: function(data){
-        console.log(data);
         $.plot("#score-plot", [data[0].plot_values], {
           xaxis: { mode: "time" },
           xaxis: { mode: "time", min: data[0].start_date, max: data[0].end_date },
