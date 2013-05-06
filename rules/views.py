@@ -94,8 +94,8 @@ class ScorePlotValues(View):
       plot_values = Score.objects.filter(rule=kwargs['rule_id']).extra({'date':"date(date)"}).values('date').annotate(score=Count('score')).order_by('date')
       for plot in plot_values:
         timestamp = int(plot['date'].strftime("%s")) * 1000
-        print timestamp
         plot_list.append([timestamp, plot['score']])
+        print '%s %s' % (plot['date'], plot['score'])
       data.append({'start_date' : start_date, 'end_date' : end_date, 'plot_values' : plot_list})
     json_data = json.dumps(data, cls=DjangoJSONEncoder)
     return HttpResponse(json_data, mimetype='application/json')
