@@ -65,9 +65,10 @@ function escapeHtml(unsafe) {
       dataType: "json",
       url: "/rule/plot/" + rule_id,
       success: function(data){
-        $.plot("#score-plot", [data], {
+        console.log(data);
+        $.plot("#score-plot", [data[0].plot_values], {
           xaxis: { mode: "time" },
-          // selection: { mode: "x" },
+          xaxis: { mode: "time", min: data[0].start_date, max: data[0].end_date },
         });
       }
     });
