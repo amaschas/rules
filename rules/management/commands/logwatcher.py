@@ -93,7 +93,7 @@ class LogUpdateHandler(FileSystemEventHandler):
     # For each line in the file, insert into redis, keyed by the channel name and line number
     # TODO set the date for the entire file at the end, so each file is dated correctly regardless of order
     for line in self.file:
-      if self.redis_index < self.channel.line_count:
+      if not self.options['overwrite'] and self.redis_index < self.channel.line_count:
         pass
       else:
         line = line.strip()
