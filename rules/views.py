@@ -1,10 +1,12 @@
-import re, redis, json
+import re, redis, json, time
 from django.template import RequestContext
 from django.shortcuts import render_to_response, get_object_or_404
 from django.contrib.auth.models import User
 from django.views.generic.base import TemplateView, View
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.db.models import Sum, Count
+
+from django.core.serializers.json import DjangoJSONEncoder
 
 # from django.utils import simplejson
 
@@ -77,6 +79,19 @@ class RuleScoresView(View):
     for line in line_data:
       data.append({'nick' : line['nick'], 'line' : line['line'], 'rule' : rule.rule})
     json_data = json.dumps(data)
+    return HttpResponse(json_data, mimetype='application/json')
+
+class ScorePlotValues(View):
+  def get(self, request, *args, **kwargs):
+    data = []
+    plot_values = Score.objects.extra({'date':"date(date)"}).values('date').annotate(score=Count('score')).order_by('date')
+    # print plot_values
+    for plot in plot_values:
+      # timestamp = time.mktime(plot['date'].timetuple())
+      timestamp = int(plot['date'].strftime("%s")) * 1000
+      print timestamp
+      data.append([timestamp, plot['score']])
+    json_data = json.dumps(data, cls=DjangoJSONEncoder)
     return HttpResponse(json_data, mimetype='application/json')
 
 

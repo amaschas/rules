@@ -59,9 +59,24 @@ function escapeHtml(unsafe) {
     });
   }
 
+  var plot_scores = function(){
+    var rule_id = $("#rule-scores").data('rule-id');
+    $.ajax({
+      dataType: "json",
+      url: "/rule/plot/" + rule_id,
+      success: function(data){
+        $.plot("#score-plot", [data], {
+          xaxis: { mode: "time" },
+          // selection: { mode: "x" },
+        });
+      }
+    });
+  }
+
   $(document).ready(function(e) {
     show_rule_scores();
     show_rule_meta();
+    plot_scores();
     setInterval(function () {
       show_rule_meta();
     }, 5000);

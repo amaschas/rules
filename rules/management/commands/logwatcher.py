@@ -9,12 +9,12 @@ from watchdog.events import FileSystemEventHandler
 from optparse import make_option
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db.models import Max
 
 from rules.models import *
 from rules.tasks import *
 
-# Feeds directory of log files into redis, and notifies the Django app when shit changes
-
+# initializes or updates a channel and a redis db of log lines
 class LogUpdateHandler(FileSystemEventHandler):
 
   def __init__(self, options):
@@ -30,16 +30,16 @@ class LogUpdateHandler(FileSystemEventHandler):
     pool = redis.ConnectionPool(host='localhost', port=6379, db=self.channel.redis_db)
     r = redis.Redis(connection_pool=pool)
     self.pipe = r.pipeline()
+    self.redis_index = 0
 
     if self.options['overwrite']:
       r.flushdb()
-      self.redis_index = 0
-      channel.set_line_count(0)
+      self.channel.set_line_count(0)
       self.date = self.channel.start_date
     else:
-      self.redis_index = self.channel.line_count + 1
-      current_line_data = r.hgetall('-'.join([self.channel.slug, str(self.channel.line_count)]))
-      self.date = current_line_data['date']
+      latest_score = Score.objects.filter(channel=self.channel).latest('date')
+      if latest_score:
+        self.date = latest_score.date
 
     nick_regex_string = '[a-zA-Z0-9_-\{\}\^\`\|]+'
     self.nick_regex_strings = [
@@ -75,7 +75,7 @@ class LogUpdateHandler(FileSystemEventHandler):
       else:
         self.dir.append(event.src_path)
         self.ReadLog()
-        self.score()
+        # self.score()
 
   # If file is modified, run ReadLog and Score
   def on_modified(self, event):
@@ -84,7 +84,7 @@ class LogUpdateHandler(FileSystemEventHandler):
         pass
       else:
         self.ReadLog()
-        self.score()
+        # self.score()
 
   def ReadLog(self):
     # Set byte position in file
@@ -93,26 +93,29 @@ class LogUpdateHandler(FileSystemEventHandler):
     # For each line in the file, insert into redis, keyed by the channel name and line number
     # TODO set the date for the entire file at the end, so each file is dated correctly regardless of order
     for line in self.file:
-      line = line.strip()
-      # if self.redis_index % 1000 == 0 and self.options['verbosity'] > 1:
-      #   os.system('clear')
-      #   print 'Current index: %s' % self.redis_index
-      if re.match('\[00:00\] --- ', line):
-        self.date = datetime.strptime(line[12:], '%a %b %d %Y')
+      if self.redis_index < self.channel.line_count:
+        pass
       else:
-        for regex_string in self.nick_regex_strings:
-          nick_match = re.match(regex_string, line[8:])
-          if nick_match:
-            nick_string = nick_match.group('nick')
-            if nick_string not in self.nicks:
-              self.nicks[nick_string] = True
-            self.pipe.hmset(
-              '-'.join([self.options['channel_name'], str(self.redis_index)]), {
-              'line' : line,
-              'date' : self.date,
-              'nick' : nick_string
-            })
-      self.redis_index += 1
+        line = line.strip()
+        # if self.redis_index % 1000 == 0 and self.options['verbosity'] > 1:
+        #   os.system('clear')
+        #   print 'Current index: %s' % self.redis_index
+        if re.match('\[00:00\] --- ', line):
+          self.date = datetime.strptime(line[12:], '%a %b %d %Y')
+        else:
+          for regex_string in self.nick_regex_strings:
+            nick_match = re.match(regex_string, line[8:])
+            if nick_match:
+              nick_string = nick_match.group('nick')
+              if nick_string not in self.nicks:
+                self.nicks[nick_string] = True
+              self.pipe.hmset(
+                '-'.join([self.options['channel_name'], str(self.redis_index)]), {
+                'line' : line,
+                'date' : self.date,
+                'nick' : nick_string
+              })
+        self.redis_index += 1
 
     self.channel.set_line_count(self.redis_index + 1)
     self.pipe.execute()

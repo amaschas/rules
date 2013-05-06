@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block html_title %}Rule: {{ rule.name }}{% endblock html_title %}
+{% block javascript %}
+<script type="text/javascript" src="{{ STATIC_URL }}js/flot/jquery.flot.js"></script>
+{% endblock javascript %}
 {% block content %}
 <div id="rule-meta">
 	<h2>Rule: {{ rule.name }}</h2>
@@ -8,5 +11,6 @@
 	<p><strong>Line count: </strong>{{ count }}</p>
 </div>
 <div id="score-meta"></div>
+<div id="score-plot"></div>
 <ul id="rule-scores" data-rule-id="{{ rule.id }}"></ul>
 {% endblock content %}
