@@ -17,8 +17,7 @@ function escapeHtml(unsafe) {
  }
 
 (function($) {
-  var show_rule_scores = function(test){
-    var rule_id = $("#rule-scores").data('rule-id');
+  var show_rule_scores = function(rule_id, test){
     var url = ''
     if(typeof test !== 'undefined'){
       url = "/rule/scores/test/" + rule_id;
@@ -39,23 +38,22 @@ function escapeHtml(unsafe) {
     });
   }
 
-  var show_rule_meta = function(){
-    var rule_id = $("#rule-scores").data('rule-id');
+  var show_rule_meta = function(rule_id){
     $.ajax({
       dataType: "json",
       url: "/rule/status/" + rule_id,
       success: function(data){
-        console.log(data[0]);
         $('#score-meta').html('');
-        $.each(data[0], function(key, value){
-          $('#score-meta').append('<p><strong>' + key + ':</strong> ' + value + '</p>');
+        $('#score-meta').append('<p><strong>Total Scores:</strong> ' + data.score.score__sum + '</p>')
+        $('#score-meta').append('<p><strong>Lines:</strong> ' + data.count + '</p>')
+        $.each(data.channels, function(key, channel){
+          $('#score-meta').append('<p><strong>' + channel.channel_title + ':</strong> ' + channel.date_scored + ' ' + channel.lines_scored + '/' + channel.line_total + ' lines scored');
         });
       }
     });
   }
 
-  var plot_scores = function(){
-    var rule_id = $("#rule-scores").data('rule-id');
+  var plot_scores = function(rule_id){
     $.ajax({
       dataType: "json",
       url: "/rule/plot/" + rule_id,
@@ -116,11 +114,12 @@ function escapeHtml(unsafe) {
   }
 
   $(document).ready(function(e) {
-    show_rule_scores();
-    show_rule_meta();
-    plot_scores();
+    var rule_id = $("#rule-meta").data('rule-id');
+    show_rule_scores(rule_id);
+    show_rule_meta(rule_id);
+    plot_scores(rule_id);
     setInterval(function () {
-      show_rule_meta();
+      show_rule_meta(rule_id);
     }, 5000);
   });
 })(jQuery);

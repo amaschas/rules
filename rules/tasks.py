@@ -58,8 +58,17 @@ def update_rule(rule, batch_size=5000):
         try:
           score_meta = ScoreMeta.objects.get(rule=rule, channel=channel)
         except ObjectDoesNotExist:
-          score_meta = ScoreMeta(rule=rule, channel=channel, line_index=0, date=channel.start_date)
+          score_meta = ScoreMeta(rule=rule, channel=channel, line_index=0)
           score_meta.save()
+
+        # Create list of redis keys keyed by line index
+        # line_index = 0
+        # redis_keys = list()
+        # while line_index < score_meta.channel.line_count:
+        #   redis_keys.append('-'.join([channel.slug, str(line_index)]))
+        #   line_index += 1
+
+        # print redis_keys
 
         # Using a redis pipline here to batch the redis get queries and reduce overhead per query
         pool = redis.ConnectionPool(host='localhost', port=6379, db=channel.redis_db)
@@ -81,11 +90,11 @@ def update_rule(rule, batch_size=5000):
           nicks[nick.name] = nick
 
         while index < channel.line_count:
-
           # Store the lines for the current batch
           line_indexes.appendleft(index)
 
           pipe.hgetall('-'.join([channel.slug, str(index)]))
+          # pipe.hgetall(redis_keys[index])
 
           if index % batch_size == 0 and index > 0 or index == channel.line_count - 1:
             

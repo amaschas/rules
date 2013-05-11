@@ -6,14 +6,12 @@
 <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}js/flot/jquery.flot.selection.js"></script>
 {% endblock javascript %}
 {% block content %}
-<div id="rule-meta">
+<div id="rule-meta" data-rule-id="{{ rule.id }}">
 	<h2>Rule: {{ rule.name }}</h2>
 	<p><strong>Rule regex: </strong>{{ rule.rule }}</p>
-	<p><strong>Rule score: </strong>{{ score }}</p>
-	<p><strong>Line count: </strong>{{ count }}</p>
 </div>
 <div id="score-meta"></div>
 <div id="score-plot"></div>
 <div id="score-plot-nav"></div>
-<ul id="rule-scores" data-rule-id="{{ rule.id }}"></ul>
+<ul id="rule-scores"></ul>
 {% endblock content %}

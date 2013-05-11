@@ -46,18 +46,21 @@ class RuleView(RulesView):
 
   def BuildContext(self, request, args, kwargs):
     rule = Rule.objects.get(id=kwargs['rule_id'])
-    score = Score.objects.filter(rule=kwargs['rule_id']).aggregate(Sum('score'))
-    count = Score.objects.filter(rule=kwargs['rule_id']).count()
-    return {'rule' : rule, 'score' : score['score__sum'], 'count' : count }
+    # score = Score.objects.filter(rule=kwargs['rule_id']).aggregate(Sum('score'))
+    # count = Score.objects.filter(rule=kwargs['rule_id']).count()
+    return {'rule' : rule }
 
 
 # Checks whether rules is currently scoring by channel, how many lines complete out of total, latest date scored
 class RuleStatusView(View):
   def get(self, request, *args, **kwargs):
-    data = []
+    data = dict()
+    data['channels'] = list()
+    data['score'] = Score.objects.filter(rule=kwargs['rule_id']).aggregate(Sum('score'))
+    data['count'] = Score.objects.filter(rule=kwargs['rule_id']).count()
     for score_meta in ScoreMeta.objects.filter(rule=kwargs['rule_id']):
       locked = check_lock('rule-%s-scoring' % score_meta.rule.id)
-      data.append({'locked' : locked, 'channel_title' : score_meta.channel.title, 'lines_scored' : score_meta.line_index, 'date_scored' : score_meta.channel.get_latest_date().strftime('%h, %d %Y'), 'line_total' : score_meta.channel.line_count})
+      data['channels'].append({'locked' : locked, 'channel_title' : score_meta.channel.title, 'lines_scored' : score_meta.line_index, 'date_scored' : score_meta.channel.get_latest_date().strftime('%h, %d %Y'), 'line_total' : score_meta.channel.line_count})
     json_data = json.dumps(data)
     return HttpResponse(json_data, mimetype='application/json')
 
@@ -99,59 +102,14 @@ class ScorePlotValues(View):
           print '%s %s' % (plot['date'], plot['score'])
         data.append({'start_date' : start_date, 'end_date' : end_date, 'plot_values' : plot_list})
       json_data = json.dumps(data, cls=DjangoJSONEncoder)
-    except ObjectDoesNotExist:
-      pass
-    return HttpResponse(json_data, mimetype='application/json')
-
-
-class UserView(RulesView):
-  template_name = 'user.html'
-
-  def BuildContext(self, request, args, kwargs):
-    nicks = Nick.objects.filter(user=kwargs['user_id'])
-    rules = Rule.objects.filter(creator=kwargs['user_id'])
-    return {'nicks' : nicks, 'rules' : rules}
-
-
-class RuleCreateView(CreateView):
-  model = Rule
-  form_class = RuleForm
-  template_name = 'rule-form.html'
-  def get_initial(self):
-    initial = super(RuleCreateView, self).get_initial()
-    initial = initial.copy()
-    initial['creator'] = self.request.user
-    return initial
-
-# TODO: I think this is going to need a custom view and form
-class RuleUpdateView(UpdateView):
-  model = Rule
-  form_class = RuleUpdateForm
-  template_name = 'rule-form.html'
-
-  def get_object(self, queryset=None):
-      obj = Rule.objects.get(id=self.kwargs['id'])
-      return obj
-
-
-class ChannelCreateView(CreateView):
-  model = Channel
-  form_class = ChannelForm
-  template_name = 'channel-form.html'
-  # def get_initial(self):
-  #   initial = super(RuleCreateView, self).get_initial()
-  #   initial = initial.copy()
-  #   initial['creator'] = self.request.user
-  #   return initial
-
-
-# Receives a score request for a channel, gets the next line, starts the scoring process
-class ScoreView(APIView):
-  def post(self, request):
-    # print request.DATA
-    try:
-      channel = Channel.objects.get(slug=request.DATA['channel'])
-      update_channel.delay(channel)
-      return HttpResponse(status=201)
+      return HttpResponse(json_data, mimetype='application/json')
     except ObjectDoesNotExist:
       return HttpResponse(status=404)
+
+class NickAssignmentView(RulesView):
+  template_name = 'nick-assigment.html'
+
+  def BuildContext(self, request, args, kwargs):
+    nicks = Nick.objects.all()
+    return {'nicks' : nicks }
+
