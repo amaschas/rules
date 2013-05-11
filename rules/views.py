@@ -57,7 +57,7 @@ class RuleStatusView(View):
     data = []
     for score_meta in ScoreMeta.objects.filter(rule=kwargs['rule_id']):
       locked = check_lock('rule-%s-scoring' % score_meta.rule.id)
-      data.append({'locked' : locked, 'channel_title' : score_meta.channel.title, 'lines_scored' : score_meta.line_index, 'date_scored' : score_meta.date.strftime('%h, %d %Y'), 'line_total' : score_meta.channel.line_count})
+      data.append({'locked' : locked, 'channel_title' : score_meta.channel.title, 'lines_scored' : score_meta.line_index, 'date_scored' : score_meta.channel.get_latest_date().strftime('%h, %d %Y'), 'line_total' : score_meta.channel.line_count})
     json_data = json.dumps(data)
     return HttpResponse(json_data, mimetype='application/json')
 
@@ -73,7 +73,7 @@ class RuleScoresView(View):
 
     rule = Rule.objects.get(id=kwargs['rule_id'])
 
-    for score in Score.objects.filter(rule=kwargs['rule_id']).order_by('date')[:limit]:
+    for score in Score.objects.filter(rule=kwargs['rule_id']).order_by('line_index').reverse()[:limit]:
       pipe.hgetall('-'.join([score.channel.slug, str(score.line_index)]))
     line_data = pipe.execute()
     for line in line_data:
@@ -85,19 +85,22 @@ class RuleScoresView(View):
 class ScorePlotValues(View):
   def get(self, request, *args, **kwargs):
     data = []
-    channels = Channel.objects.all()
-    for channel in channels:
-      plot_list = list()
-      start_date = int(channel.start_date.strftime("%s")) * 1000
-      latest_score = Score.objects.filter(channel=channel).latest('date')
-      end_date = int(latest_score.date.strftime("%s")) * 1000
-      plot_values = Score.objects.filter(rule=kwargs['rule_id']).extra({'date':"date(date)"}).values('date').annotate(score=Count('score')).order_by('date')
-      for plot in plot_values:
-        timestamp = int(plot['date'].strftime("%s")) * 1000
-        plot_list.append([timestamp, plot['score']])
-        print '%s %s' % (plot['date'], plot['score'])
-      data.append({'start_date' : start_date, 'end_date' : end_date, 'plot_values' : plot_list})
-    json_data = json.dumps(data, cls=DjangoJSONEncoder)
+    try:
+      channels = Channel.objects.all()
+      for channel in channels:
+        plot_list = list()
+        start_date = int(channel.start_date.strftime("%s")) * 1000
+        latest_score = Score.objects.filter(channel=channel).latest('date')
+        end_date = int(latest_score.date.strftime("%s")) * 1000
+        plot_values = Score.objects.filter(rule=kwargs['rule_id']).extra({'date':"date(date)"}).values('date').annotate(score=Count('score')).order_by('date')
+        for plot in plot_values:
+          timestamp = int(plot['date'].strftime("%s")) * 1000
+          plot_list.append([timestamp, plot['score']])
+          print '%s %s' % (plot['date'], plot['score'])
+        data.append({'start_date' : start_date, 'end_date' : end_date, 'plot_values' : plot_list})
+      json_data = json.dumps(data, cls=DjangoJSONEncoder)
+    except ObjectDoesNotExist:
+      pass
     return HttpResponse(json_data, mimetype='application/json')
 
 

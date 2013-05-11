@@ -34,6 +34,12 @@ class Channel(models.Model):
     self.line_count = count
     self.save()
 
+  def get_latest_date(self):
+    latest_score = Score.objects.filter(channel=self).latest('date')
+    if latest_score:
+      return latest_score.date
+    else:
+      return False
 
 # TODO: track whether nicks are active (true on join or nick change or first seen, false on part or nick change)
 # once we're tracking whether nicks are active, we can score lines read per nick
@@ -75,7 +81,6 @@ class ScoreMeta(models.Model):
   rule = models.ForeignKey(Rule)
   channel = models.ForeignKey(Channel)
   line_index = models.IntegerField(default=0)
-  date = models.DateTimeField(blank=True, null=True)
 
   def increment_line_index(self):
     self.line_index += 1

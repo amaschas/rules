@@ -61,44 +61,55 @@ def update_rule(rule, batch_size=5000):
           score_meta = ScoreMeta(rule=rule, channel=channel, line_index=0, date=channel.start_date)
           score_meta.save()
 
+        # Using a redis pipline here to batch the redis get queries and reduce overhead per query
         pool = redis.ConnectionPool(host='localhost', port=6379, db=channel.redis_db)
         r = redis.Redis(connection_pool=pool)
         pipe = r.pipeline()
 
-        task_list = deque()
+        # Using deque for speed, though I'm not sure the gains are noticeable
+        score_queue = deque()
 
+        # Creating local variables in most cases, though I'm not sure it results in speed gains as long as I avoid saving score_meta
         index = score_meta.line_index
-        line_date = score_meta.date
+        # line_date = score_meta.date
         line_indexes = deque()
+        # date =  ''
 
+        # Get all the nicks up front, so we're searching a dict rather than querying the DB for each iterration
         nicks = dict()
         for nick in Nick.objects.all():
           nicks[nick.name] = nick
 
-        date =  ''
-
         while index < channel.line_count:
 
+          # Store the lines for the current batch
           line_indexes.appendleft(index)
 
           pipe.hgetall('-'.join([channel.slug, str(index)]))
 
           if index % batch_size == 0 and index > 0 or index == channel.line_count - 1:
+            
+            # Renewing the lock every batch
+            # Might be a better way to do this, probably worth bumping the batch size
             renew_lock(lockname, identifier)
+
+            # Get all batched lines
             lines = pipe.execute()
 
             for line in lines:
+              # Get the current line from the stores array of batch lines
               current_line = line_indexes.pop()
               try:
-                date = line['date']
-                task_list.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : date, 'line_index' : current_line}, 'line' : line['line']})
+                # We use date later to populate score_meta
+                # date = line['date']
+                score_queue.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : line['date'], 'line_index' : current_line}, 'line' : line['line']})
               except KeyError:
                 pass
 
-            bulk_score.delay(deque(task_list))
-            task_list.clear()
+            bulk_score.delay(deque(score_queue))
+            score_queue.clear()
             score_meta.line_index = index
-            score_meta.date = date
+            # score_meta.date = date
             score_meta.save()
 
           index += 1

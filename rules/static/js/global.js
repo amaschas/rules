@@ -17,18 +17,15 @@ function escapeHtml(unsafe) {
  }
 
 (function($) {
-
   var show_rule_scores = function(test){
     var rule_id = $("#rule-scores").data('rule-id');
     var url = ''
-    // console.log(typeof test);
     if(typeof test !== 'undefined'){
       url = "/rule/scores/test/" + rule_id;
     }
     else{
       url = "/rule/scores/" + rule_id;
     }
-    // console.log(url);
     $.ajax({
       dataType: "json",
       url: url,
@@ -48,6 +45,7 @@ function escapeHtml(unsafe) {
       dataType: "json",
       url: "/rule/status/" + rule_id,
       success: function(data){
+        console.log(data[0]);
         $('#score-meta').html('');
         $.each(data[0], function(key, value){
           $('#score-meta').append('<p><strong>' + key + ':</strong> ' + value + '</p>');
@@ -62,9 +60,56 @@ function escapeHtml(unsafe) {
       dataType: "json",
       url: "/rule/plot/" + rule_id,
       success: function(data){
-        $.plot("#score-plot", [data[0].plot_values], {
-          xaxis: { mode: "time" },
-          xaxis: { mode: "time", min: data[0].start_date, max: data[0].end_date },
+        var options = {
+          xaxis: {
+            mode: "time",
+            tickLength: 5
+          },
+          selection: {
+            mode: "x"
+          },
+        };
+        var plot = $.plot("#score-plot", [data[0].plot_values], options);
+        var overview = $.plot("#score-plot-nav", [data[0].plot_values], {
+          series: {
+            lines: {
+              show: true,
+              lineWidth: 1
+            },
+            shadowSize: 0
+          },
+          xaxis: {
+            ticks: [],
+            mode: "time",
+            min: data[0].start_date,
+            max: data[0].end_date,
+          },
+          yaxis: {
+            ticks: [],
+            min: 0,
+            autoscaleMargin: 0.1
+          },
+          selection: {
+            mode: "x"
+          }
+        });
+        $("#score-plot").bind("plotselected", function (event, ranges) {
+
+          // do the zooming
+
+          plot = $.plot("#score-plot", [data[0].plot_values], $.extend(true, {}, options, {
+            xaxis: {
+              min: ranges.xaxis.from,
+              max: ranges.xaxis.to
+            }
+          }));
+
+          // don't fire event on the overview to prevent eternal loop
+
+          overview.setSelection(ranges, true);
+        });
+        $("#score-plot-nav").bind("plotselected", function (event, ranges) {
+          plot.setSelection(ranges);
         });
       }
     });

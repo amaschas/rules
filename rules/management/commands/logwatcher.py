@@ -21,9 +21,8 @@ class LogUpdateHandler(FileSystemEventHandler):
 
     # print options
 
+    # Store the command line args
     self.options = options
-    self.nicks = dict()
-
     self.channel = Channel.objects.get(slug=self.options['channel_name'])
 
     # Init ourselves some redis
@@ -32,15 +31,19 @@ class LogUpdateHandler(FileSystemEventHandler):
     self.pipe = r.pipeline()
     self.redis_index = 0
 
+    # If the overwrite flag is set, flush the redis db, 
+    # set the channel line count to 0, and set the date
+    # context to the channel start date, else grab the latest
+    # date from the scores
     if self.options['overwrite']:
       r.flushdb()
       self.channel.set_line_count(0)
       self.date = self.channel.start_date
     else:
-      latest_score = Score.objects.filter(channel=self.channel).latest('date')
-      if latest_score:
-        self.date = latest_score.date
+      self.date = self.channel.get_latest_date()
 
+    # Define the nick handling members
+    self.nicks = dict()
     nick_regex_string = '[a-zA-Z0-9_-\{\}\^\`\|]+'
     self.nick_regex_strings = [
       '<(?P<nick>%s)>' % nick_regex_string,
@@ -115,6 +118,7 @@ class LogUpdateHandler(FileSystemEventHandler):
                 'date' : self.date,
                 'nick' : nick_string
               })
+              break
         self.redis_index += 1
 
     self.channel.set_line_count(self.redis_index + 1)
