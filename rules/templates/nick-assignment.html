@@ -77,8 +77,12 @@
       {% if nicks.has_next %}
         <li><a href="/claim-nicks/?page={{ nicks.next_page_number }}&amp;per_page={{ per_page }}">Next</a></li>
       {% else %}
-        <li class="disabled"><a>Prev</a></li>
+        <li class="disabled"><a>Next</a></li>
       {% endif %}
     </ul>
   </div>
 {% endblock content %}
+{% block footer %}
+  <li><a href="">rules</a></li>
+  <li class="active"><a>claim nicks</a></li>
+{% endblock footer %}

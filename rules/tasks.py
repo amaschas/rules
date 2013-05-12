@@ -1,3 +1,4 @@
+
 import glob, re, redis, os, time
 from collections import deque
 from celery import Celery
@@ -10,8 +11,11 @@ from django.conf import settings
 from models import *
 from lock import acquire_lock, release_lock, renew_lock
 
-# import logging
-# log = logging.getLogger(__name__)
+import logging
+log = logging.getLogger(__name__)
+hdlr = logging.FileHandler('/tmp/score.log')
+log.addHandler(hdlr)
+log.setLevel(logging.INFO)
 
 # Might not need a backend
 celery = Celery('rules', broker='amqp://guest:guest@localhost:5672//')
@@ -24,7 +28,8 @@ def bulk_score(scores):
   try:
     while scores:
       single_score = scores.popleft()
-      matches = len(re.findall(single_score['score']['rule'].rule, single_score['line']))
+      # Get the number of matches, filtered for empty matches
+      matches = len(filter(bool, re.findall(single_score['score']['rule'].rule, single_score['line'])))
       if matches:
         scored.append(Score(rule=single_score['score']['rule'], nick=single_score['score']['nick'], channel=single_score['score']['channel'], date=single_score['score']['date'], line_index=single_score['score']['line_index'], score=matches))
   except IndexError:
@@ -80,9 +85,7 @@ def update_rule(rule, batch_size=5000):
 
         # Creating local variables in most cases, though I'm not sure it results in speed gains as long as I avoid saving score_meta
         index = score_meta.line_index
-        # line_date = score_meta.date
         line_indexes = deque()
-        # date =  ''
 
         # Get all the nicks up front, so we're searching a dict rather than querying the DB for each iterration
         nicks = dict()
@@ -109,8 +112,6 @@ def update_rule(rule, batch_size=5000):
               # Get the current line from the stores array of batch lines
               current_line = line_indexes.pop()
               try:
-                # We use date later to populate score_meta
-                # date = line['date']
                 score_queue.appendleft({'score' : {'rule' : rule, 'nick' : nicks[line['nick']], 'channel' : channel, 'date' : line['date'], 'line_index' : current_line}, 'line' : line['line']})
               except KeyError:
                 pass
@@ -118,7 +119,6 @@ def update_rule(rule, batch_size=5000):
             bulk_score.delay(deque(score_queue))
             score_queue.clear()
             score_meta.line_index = index
-            # score_meta.date = date
             score_meta.save()
 
           index += 1

@@ -62,14 +62,23 @@ function escapeHtml(unsafe) {
       url: "/rule/plot/" + rule_id,
       success: function(data){
         var options = {
-          bars: { show: true },
           xaxis: {
             mode: "time",
-            tickLength: 5
+            tickLength: 1,
+            timeformat: "%m/%d/%Y",
+            minTickSize: [1, "day"]
+            // autoscaleMargin: .01
           },
           grid: {
             // hoverable: true,
             // clickable: true,
+          },
+          series: {
+            bars: {
+              show: true,
+              barWidth : 60*60*21*1000,
+              align: 'center'
+            },
           },
           selection: {
             mode: "x"
@@ -82,7 +91,12 @@ function escapeHtml(unsafe) {
             //   show: true,
             //   lineWidth: 1
             // },
-            shadowSize: 0
+            bars: {
+              show: true,
+              barWidth : 60*60*21*1000,
+              align: 'center'
+            },
+            shadowSize: 2
           },
           bars: { show: true },
           xaxis: {
@@ -90,11 +104,11 @@ function escapeHtml(unsafe) {
             mode: "time",
             min: data[0].start_date,
             max: data[0].end_date,
+            // autoscaleMargin: 5
           },
           yaxis: {
             ticks: [],
             min: 0,
-            autoscaleMargin: 0.1
           },
           selection: {
             mode: "x"
@@ -107,7 +121,8 @@ function escapeHtml(unsafe) {
           plot = $.plot("#score-plot", [data[0].plot_values], $.extend(true, {}, options, {
             xaxis: {
               min: ranges.xaxis.from,
-              max: ranges.xaxis.to
+              max: ranges.xaxis.to,
+              autoscaleMargin: .1
             }
           }));
 

@@ -2,7 +2,7 @@
 {% block html_title %}Rule: {{ rule.name }}{% endblock html_title %}
 {% block javascript %}
 <script type="text/javascript" src="{{ STATIC_URL }}js/flot/jquery.flot.js"></script>
-<!-- <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}js/flot/jquery.flot.time.js"></script> -->
+<script language="javascript" type="text/javascript" src="{{ STATIC_URL }}js/flot/jquery.flot.time.js"></script>
 <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}js/flot/jquery.flot.selection.js"></script>
 <script type="text/javascript" src="{{ STATIC_URL }}js/rule.js"></script>
 {% endblock javascript %}
@@ -14,5 +14,5 @@
 <div id="score-meta"></div>
 <div id="score-plot"></div>
 <div id="score-plot-nav"></div>
-<ul id="rule-scores"></ul>
+<ul class="unstyled" id="rule-scores"></ul>
 {% endblock content %}

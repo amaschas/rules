@@ -13,3 +13,6 @@ header { margin-top: 10px; }
 .thumbnail.clicked { background-color: #49afcd; }
 /* line 24, ../sass/screen.scss */
 .thumbnail form { margin: 10px 0px 0px 0px; }
+
+/* line 29, ../sass/screen.scss */
+.highlight { background-color: yellow; }

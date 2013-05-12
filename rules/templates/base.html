@@ -34,12 +34,12 @@
 	</div>
 	<footer class="navbar">
 		<div class="navbar-inner">
-			{% block footer %}
 			<ul class="nav">
-				<li><a href="">rules</a></li>
-				<li><a href="">claim nick</a></li>
+				{% block footer %}
+					<li><a href="">rules</a></li>
+					<li><a href="/claim-nicks/">claim nicks</a></li>
+				{% endblock footer %}
 			</ul>
-			{% endblock footer %}
 		</div>
 	</footer>
 	</div>

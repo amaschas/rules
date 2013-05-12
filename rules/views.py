@@ -1,4 +1,4 @@
-import re, redis, json, time
+import re, redis, json, time, calendar
 from django.template import RequestContext
 from django.shortcuts import render_to_response, get_object_or_404
 from django.contrib.auth.models import User
@@ -101,7 +101,8 @@ class ScorePlotValues(View):
         end_date = int(latest_score.date.strftime("%s")) * 1000
         plot_values = Score.objects.filter(rule=kwargs['rule_id']).extra({'date':"date(date)"}).values('date').annotate(score=Count('score')).order_by('date')
         for plot in plot_values:
-          timestamp = int(plot['date'].strftime("%s")) * 1000
+          # timestamp = int(plot['date'].strftime("%s")) * 1000
+          timestamp = calendar.timegm(plot['date'].timetuple()) * 1000
           plot_list.append([timestamp, plot['score']])
           print '%s %s' % (plot['date'], plot['score'])
         data.append({'start_date' : start_date, 'end_date' : end_date, 'plot_values' : plot_list})

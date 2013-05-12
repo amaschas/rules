@@ -4,13 +4,14 @@ from django.forms import ModelForm
 
 from models import *
 
-class ClaimNickForm(forms.Form):
-  pass 
-
-class NickForm(forms.ModelForm):
+class ClaimNickForm(forms.ModelForm):
   class Meta:
     model = Nick
-    # exclude = ('source','description')
+
+# class NickForm(forms.ModelForm):
+#   class Meta:
+#     model = Nick
+#     # exclude = ('source','description')
 
 class ChannelForm(forms.ModelForm):
   class Meta:
