@@ -4,6 +4,9 @@ from django.forms import ModelForm
 
 from models import *
 
+class ClaimNickForm(forms.Form):
+  pass 
+
 class NickForm(forms.ModelForm):
   class Meta:
     model = Nick

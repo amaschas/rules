@@ -48,6 +48,9 @@ function escapeHtml(unsafe) {
         $('#score-meta').append('<p><strong>Lines:</strong> ' + data.count + '</p>')
         $.each(data.channels, function(key, channel){
           $('#score-meta').append('<p><strong>' + channel.channel_title + ':</strong> ' + channel.date_scored + ' ' + channel.lines_scored + '/' + channel.line_total + ' lines scored');
+          if (channel.locked) {
+            $('#score-meta').append('<div class="progress"><div class="bar" style="width: '+ channel.percent_complete + '%;"></div></div>');
+          }
         });
       }
     });
@@ -59,9 +62,14 @@ function escapeHtml(unsafe) {
       url: "/rule/plot/" + rule_id,
       success: function(data){
         var options = {
+          bars: { show: true },
           xaxis: {
             mode: "time",
             tickLength: 5
+          },
+          grid: {
+            // hoverable: true,
+            // clickable: true,
           },
           selection: {
             mode: "x"
@@ -70,12 +78,13 @@ function escapeHtml(unsafe) {
         var plot = $.plot("#score-plot", [data[0].plot_values], options);
         var overview = $.plot("#score-plot-nav", [data[0].plot_values], {
           series: {
-            lines: {
-              show: true,
-              lineWidth: 1
-            },
+            // lines: {
+            //   show: true,
+            //   lineWidth: 1
+            // },
             shadowSize: 0
           },
+          bars: { show: true },
           xaxis: {
             ticks: [],
             mode: "time",
@@ -117,6 +126,7 @@ function escapeHtml(unsafe) {
     var rule_id = $("#rule-meta").data('rule-id');
     show_rule_scores(rule_id);
     show_rule_meta(rule_id);
+    // This needs to plot by channel too
     plot_scores(rule_id);
     setInterval(function () {
       show_rule_meta(rule_id);

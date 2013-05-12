@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block html_title %}Claim Nicks{% endblock html_title %}
+{% block javascript %}
+<script type="text/javascript" src="{{ STATIC_URL }}bootstrap/js/bootstrap-dropdown.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}bootstrap/js/bootstrap-button.js"></script>
+<script type="text/javascript" src="{{ STATIC_URL }}js/nick.js"></script>
+{% endblock javascript %}
+{% block nav %}
+  <li><a href="">rules</a></li>
+  <li class="active"><a>claim nicks</a></li>
+{% endblock nav %}
+{% block content %}
+  <h6 class="muted"><strong>Total Unclaimed Nicks:</strong> {{ nicks.paginator.count }}</h6>
+  <div class="btn-toolbar">
+    <div class="btn-group">
+      <button class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+        Sort By
+        <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu">
+        <li><a href="#">Sort Alphabetically</a></li>
+        <li><a href="#">Sort by First Seen</a></li>
+      </ul>
+    </div>
+    <div class="btn-group">
+      <button class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+        Results Per Page
+        <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu">
+        <li><a href="#">50</a></li>
+        <li><a href="#">100</a></li>
+        <li><a href="#">200</a></li>
+        <li><a href="#">500</a></li>
+        <li><a href="#">1000</a></li>
+      </ul>
+    </div>
+    <div class="btn-group">
+      <button class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+        Display Nicks By Status
+        <span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu">
+        <li><a href="#">Unclaimed</a></li>
+        <li><a href="#">Claimed</a></li>
+        <li><a href="#">Disputed</a></li>
+      </ul>
+    </div>
+    <button class="btn btn-success">Claim Selected Nicks</button>
+  </div>
+  <ul class="thumbnails">
+  {% for nick in nicks %}
+    <li class="span2">
+      <div class="thumbnail" data-nick-id="{{ nick.id }}">
+        <div class="label label-info">{{ nick.name }}</div><br />
+        <form>
+          <button type="submit" class="btn btn-success">Claim</button>
+        </form>
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+  <div class="pagination">
+    <ul>
+      {% if nicks.has_previous %}
+        <li><a href="/claim-nicks/?page={{ nicks.previous_page_number }}&amp;per_page={{ per_page }}">Prev</a></li>
+      {% else %}
+        <li class="disabled"><a>Prev</a></li>
+      {% endif %}
+      {% for page in pages %}
+        {% if nicks.number == page %}
+          <li class="active"><a href="/claim-nicks/?page={{ page }}&amp;per_page={{ per_page }}">{{ page }}</a></li>
+        {% else %}
+          <li><a href="/claim-nicks/?page={{ page }}&amp;per_page={{ per_page }}">{{ page }}</a></li>
+        {% endif %}
+      {% endfor %}
+      {% if nicks.has_next %}
+        <li><a href="/claim-nicks/?page={{ nicks.next_page_number }}&amp;per_page={{ per_page }}">Next</a></li>
+      {% else %}
+        <li class="disabled"><a>Prev</a></li>
+      {% endif %}
+    </ul>
+  </div>
+{% endblock content %}

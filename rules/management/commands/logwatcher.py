@@ -100,9 +100,9 @@ class LogUpdateHandler(FileSystemEventHandler):
         pass
       else:
         line = line.strip()
-        # if self.redis_index % 1000 == 0 and self.options['verbosity'] > 1:
-        #   os.system('clear')
-        #   print 'Current index: %s' % self.redis_index
+        if self.redis_index % 1000 == 0 and self.options['verbose']:
+          os.system('clear')
+          print 'Current index: %s' % self.redis_index
         if re.match('\[00:00\] --- ', line):
           self.date = datetime.strptime(line[12:], '%a %b %d %Y')
         else:
@@ -123,13 +123,13 @@ class LogUpdateHandler(FileSystemEventHandler):
 
     self.channel.set_line_count(self.redis_index + 1)
     self.pipe.execute()
-    if Nick.objects.count() == 0:
-      Nick.objects.bulk_create(Nick(name=nick[0]) for nick in self.nicks.iteritems())
-    else:
-      for nick in self.nicks.iteritems():
-        if nick[1]:
-          Nick.objects.get_or_create(name=nick[0])
-          self.nicks[nick[0]] = False
+    # if Nick.objects.count() == 0:
+    #   Nick.objects.bulk_create(Nick(name=nick[0], first_seen=self.date) for nick in self.nicks.iteritems())
+    # else:
+    for nick in self.nicks.iteritems():
+      if nick[1]:
+        Nick.objects.get_or_create(name=nick[0], first_seen=self.date)
+        self.nicks[nick[0]] = False
 
     # Once we're done with the file, check if there is another, and run ReadLog() on it if it exists
     try:
@@ -148,6 +148,7 @@ class Command(BaseCommand):
     make_option('--channel-name', help="The name of the channel being logged"),
     make_option('-f', '--filter-string', help="A string used to filter filenames", default=''),
     make_option('-o', '--overwrite', help="Flag to overwrite prior entries", action="store_true"),
+    make_option('--verbose', help="Enable verbose output", action="store_true", default=False),
   )
 
   def handle(self, *args, **options):

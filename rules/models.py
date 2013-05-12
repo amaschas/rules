@@ -47,6 +47,7 @@ class Nick(models.Model):
   user = models.ForeignKey(User, blank=True, null=True)
   # need to run alter table rules_nick modify name varchar(100) collate utf8_bin; for case sensitivity
   name = models.CharField(max_length=100, unique=True)
+  first_seen = models.DateTimeField(blank=True, null=True)
   def __unicode__(self):
     return self.name
 

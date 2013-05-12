@@ -3,31 +3,45 @@
 <head>
 	<meta charset="utf-8" />
 	<title>{% block html_title %}GIVE{% endblock html_title %}</title>
-	<link rel="stylesheet" href="/static/stylesheets/screen.css" media="all" type="text/css" />
+	<link rel="stylesheet" href="{{ STATIC_URL }}bootstrap/bootstrap-2.3.1.css" media="all" type="text/css" />
+	<link rel="stylesheet" href="{{ STATIC_URL }}bootstrap/bootstrap-responsive-2.3.1.css" media="all" type="text/css" />
+	<link rel="stylesheet" href="{{ STATIC_URL }}stylesheets/screen.css" media="all" type="text/css" />
 	<script type="text/javascript" src="{{ STATIC_URL }}js/jquery.js"></script>
 	{% block javascript %}{% endblock javascript %}
-	<script type="text/javascript" src="{{ STATIC_URL }}js/global.js"></script>
 </head>
 <body>
-	<header>
-		{% block header %}
-		<h1>rule.sine.com</h1>
-		<ul id="nav">
-			<li><a href="">rules</a></li>
-			<li><a href="">claim nick</a></li>
-		</ul>
-		{% endblock header %}
+	<div class="container">
+	<header class="navbar">
+		<nav class="navbar-inner">
+			{% block header %}
+				<a href="/" class="brand">rule.sine.com</a>
+				<ul class="nav">
+					{% block nav %}
+						<li><a href="">rules</a></li>
+						<li><a href="/claim-nicks/">claim nicks</a></li>
+					{% endblock nav %}
+						{% if user.is_authenticated %}
+							<li><a>You Suck, {{ user }}</a></li>
+						{% else %}
+							<li><a href="">log in</a></li>
+						{% endif %}
+				</ul>
+			{% endblock header %}
+		</nav>
 	</header>
 	<div id="content">
 		{% block content %}{% endblock content %}
 	</div>
-	<footer>
-		{% block footer %}
-		<ul id="nav">
-			<li><a href="">rules</a></li>
-			<li><a href="">claim nick</a></li>
-		</ul>
-		{% endblock footer %}
+	<footer class="navbar">
+		<div class="navbar-inner">
+			{% block footer %}
+			<ul class="nav">
+				<li><a href="">rules</a></li>
+				<li><a href="">claim nick</a></li>
+			</ul>
+			{% endblock footer %}
+		</div>
 	</footer>
+	</div>
 </body>
 </html>

@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.views.generic.base import TemplateView, View
 from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.db.models import Sum, Count
+from django.core.paginator import Paginator
 
 from django.core.serializers.json import DjangoJSONEncoder
 
@@ -60,7 +61,10 @@ class RuleStatusView(View):
     data['count'] = Score.objects.filter(rule=kwargs['rule_id']).count()
     for score_meta in ScoreMeta.objects.filter(rule=kwargs['rule_id']):
       locked = check_lock('rule-%s-scoring' % score_meta.rule.id)
-      data['channels'].append({'locked' : locked, 'channel_title' : score_meta.channel.title, 'lines_scored' : score_meta.line_index, 'date_scored' : score_meta.channel.get_latest_date().strftime('%h, %d %Y'), 'line_total' : score_meta.channel.line_count})
+      percent_complete = 0
+      if score_meta.line_index > 0 and score_meta.line_index > 0:
+        percent_complete = score_meta.line_index * 100 / score_meta.channel.line_count
+      data['channels'].append({'locked' : locked, 'channel_title' : score_meta.channel.title, 'lines_scored' : score_meta.line_index, 'date_scored' : score_meta.channel.get_latest_date().strftime('%h, %d %Y'), 'line_total' : score_meta.channel.line_count, 'percent_complete' : percent_complete})
     json_data = json.dumps(data)
     return HttpResponse(json_data, mimetype='application/json')
 
@@ -107,9 +111,31 @@ class ScorePlotValues(View):
       return HttpResponse(status=404)
 
 class NickAssignmentView(RulesView):
-  template_name = 'nick-assigment.html'
+  template_name = 'nick-assignment.html'
 
   def BuildContext(self, request, args, kwargs):
-    nicks = Nick.objects.all()
-    return {'nicks' : nicks }
+    try:
+      try:
+        if request.GET['order_by'] in {'name', 'first_seen'}:
+          order_by = request.GET['order_by']
+        else:
+          order_by = 'name'
+      except:
+        order_by = 'name'
+      nicks = Nick.objects.filter(user__isnull=True).order_by(order_by)
+      # if 'paged' in request.GET and request.GET['paged'] == False:
+      #   return {'nicks' : nicks }
+      # else:
+      try:
+        per_page = int(request.GET['per_page'])
+      except:
+        per_page = 10
+      try:
+        page = int(request.GET['page'])
+      except:
+        page = 1
+      paged_nicks = Paginator(nicks, per_page)
+      return {'nicks' : paged_nicks.page(page), 'pages' : paged_nicks.page_range, 'per_page' : per_page }
+    except ObjectDoesNotExist:
+      return
 
