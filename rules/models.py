@@ -48,6 +48,8 @@ class Nick(models.Model):
   # need to run alter table rules_nick modify name varchar(100) collate utf8_bin; for case sensitivity
   name = models.CharField(max_length=100, unique=True)
   first_seen = models.DateTimeField(blank=True, null=True)
+  disputed = models.BooleanField(default=False)
+  disputer = models.ForeignKey(User, blank=True, null=True, related_name='+')
   def __unicode__(self):
     return self.name
 
@@ -56,6 +58,7 @@ class Score(models.Model):
   nick = models.ForeignKey(Nick)
   rule = models.ForeignKey(Rule)
   channel = models.ForeignKey(Channel)
+  # We track the date twice, to make time series queries easier
   date = models.DateTimeField()
   line_index = models.IntegerField(default=0)
   score = models.IntegerField(default=1)

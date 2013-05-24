@@ -5,17 +5,20 @@ from django.forms import ModelForm
 from models import *
 
 class ClaimNickForm(forms.ModelForm):
+  def __init__(self, *args, **kwargs):
+    super(ClaimNickForm, self).__init__(*args, **kwargs)
+    self.fields['user'].widget = forms.HiddenInput()
+    self.fields['disputed'].widget = forms.HiddenInput()
+    self.fields['disputer'].widget = forms.HiddenInput()
   class Meta:
     model = Nick
+    exclude = ('name', 'first_seen')
 
-# class NickForm(forms.ModelForm):
-#   class Meta:
-#     model = Nick
-#     # exclude = ('source','description')
 
 class ChannelForm(forms.ModelForm):
   class Meta:
     model = Channel
+
 
 class RuleForm(forms.ModelForm):
   def __init__(self, *args, **kwargs):
@@ -26,14 +29,3 @@ class RuleForm(forms.ModelForm):
   class Meta:
     model = Rule
     exclude = ('status',)
-
-# TODO: I think this is going to need a custom view and form
-class RuleUpdateForm(RuleForm):
-  def __init__(self, *args, **kwargs):
-    super(RuleUpdateForm, self).__init__(*args, **kwargs)
-    del self.fields['creator']
-
-    def save(self, *args, **kwargs):
-      print 'saving'
-      # kwargs['instance'].save(update_fields=['name', 'rule'])
-      # super(RuleUpdateForm, self).__init__(*args, **kwargs)

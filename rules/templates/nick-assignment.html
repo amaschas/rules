@@ -14,12 +14,12 @@
   <div class="btn-toolbar">
     <div class="btn-group">
       <button class="btn dropdown-toggle" data-toggle="dropdown" href="#">
-        Sort By
+        Sort
         <span class="caret"></span>
       </button>
       <ul class="dropdown-menu">
-        <li><a href="#">Sort Alphabetically</a></li>
-        <li><a href="#">Sort by First Seen</a></li>
+        <li><a href="#">Alphabetically</a></li>
+        <li><a href="#">By First Seen</a></li>
       </ul>
     </div>
     <div class="btn-group">
@@ -46,7 +46,10 @@
         <li><a href="#">Disputed</a></li>
       </ul>
     </div>
-    <button class="btn btn-success">Claim Selected Nicks</button>
+    <div class="btn-group">
+      <button class="btn btn-success">Claim Selected Nicks</button>
+    </div>
+    <button class="btn">Deselect All</button>
   </div>
   <ul class="thumbnails">
   {% for nick in nicks %}
