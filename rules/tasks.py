@@ -51,7 +51,7 @@ def update_channel_save_trigger(sender, **kwargs):
 # TODO use BATCH_SIZE in settings here?
 # Scores the rule against every active channel
 @celery.task
-def update_rule(rule, batch_size=5000):
+def update_rule(rule, batch_size=50000):
   print 'starting score'
   identifier = str(uuid.uuid4())
   lockname = 'rule-%s-scoring' % rule.id
