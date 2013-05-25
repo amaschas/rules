@@ -112,8 +112,7 @@ class LogUpdateHandler(FileSystemEventHandler):
               nick_string = nick_match.group('nick')
               if nick_string not in self.nicks:
                 self.nicks[nick_string] = True
-              self.pipe.hmset(
-                '-'.join([self.options['channel_name'], str(self.redis_index)]), {
+              self.pipe.hmset(str(self.redis_index)), {
                 'line' : line,
                 'date' : self.date,
                 'nick' : nick_string

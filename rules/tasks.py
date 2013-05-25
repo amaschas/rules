@@ -11,11 +11,11 @@ from django.conf import settings
 from models import *
 from lock import acquire_lock, release_lock, renew_lock
 
-import logging
-log = logging.getLogger(__name__)
-hdlr = logging.FileHandler('/tmp/score.log')
-log.addHandler(hdlr)
-log.setLevel(logging.INFO)
+# import logging
+# log = logging.getLogger(__name__)
+# hdlr = logging.FileHandler('/tmp/score.log')
+# log.addHandler(hdlr)
+# log.setLevel(logging.INFO)
 
 # Might not need a backend
 celery = Celery('rules', broker='amqp://guest:guest@localhost:5672//')
@@ -96,7 +96,7 @@ def update_rule(rule, batch_size=50000):
           # Store the lines for the current batch
           line_indexes.appendleft(index)
 
-          pipe.hgetall('-'.join([channel.slug, str(index)]))
+          pipe.hgetall(str(index))
           # pipe.hgetall(redis_keys[index])
 
           if index % batch_size == 0 and index > 0 or index == channel.line_count - 1:
