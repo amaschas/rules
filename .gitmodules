@@ -1,3 +1,0 @@
-[submodule "rules/static/js/flot"]
-	path = rules/static/js/flot
-	url = git@github.com:flot/flot.git
